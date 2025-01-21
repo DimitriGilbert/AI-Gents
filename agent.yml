@@ -5,11 +5,19 @@ description: "A generic AI agent"
 # Model configuration
 model:
   provider: lmstudio
-  name: llama-3.2-3b-instruct
+  name: DeepSeek-R1-Distill-Llama-8B
   temperature: 0.7
 
 system:
   prompt: "You are AI-gent, a helpful AI assistant that provides clear and concise responses."
+  toolPrompt: |
+    You have a set of tools to use to help you with your tasks. to call a tool, use the following format:
+    ```json
+    {
+      "tool_calls": [{"type":"function","function":{"name":"<tool_name>","arguments":{<tool_arguments>}}}]
+    }
+    ```
+    your message have to only contain the tool calls, no other text.
 
 # Agent settings
 settings:
@@ -110,7 +118,6 @@ tools:
             type: "string"
             description: "The directory to list the files from"
             default: "."
-        required: ["directory"]
       returns:
         type: "string"
         description: "The list of files and directories in the directory"

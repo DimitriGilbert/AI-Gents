@@ -1,0 +1,33 @@
+#!/bin/bash
+
+fs_exists() {
+  [ -e "$1" ]
+}
+
+fs_list() {
+  if [[ "$1" == "" ]]; then
+    ls -la
+  else
+    if fs_exists "$1"; then
+      ls -la "$1"
+    fi
+  fi
+}
+
+fs_read() {
+  cat "$1"
+}
+
+fs_write() {
+  if [[ "$4" == "on" ]]; then
+      cp "$1" "$1.bak"
+  fi
+  case "$3" in
+    "a")
+      echo -e "$2" >> "$1"
+      ;;
+    "*")
+      echo -e "$2" > "$1"
+      ;;
+  esac
+}

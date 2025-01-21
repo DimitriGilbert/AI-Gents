@@ -318,6 +318,55 @@ trap on_interrupt INT
 # @parseArger-end
 
 _AGENT_CONFIG=""
+
+
+
+# Function to parse tool documentation from the agent config
+parse_tool_docs() {
+    if [[ "$_AGENT_CONFIG" != "" ]]; then
+        local tool_docs=""
+        
+        # Get number of tools from functions array
+        local tool_count="$(echo "$_AGENT_CONFIG" | yq '.tools.functions | length' -)"
+        
+        # Iterate through tools by index
+        for ((i=0; i<tool_count; i++)); do
+            # Extract tool info using proper array indexing
+            local name="$(echo "$_AGENT_CONFIG" | yq ".tools.functions[$i].name" -)"
+            local desc="$(echo "$_AGENT_CONFIG" | yq ".tools.functions[$i].description" -)"
+            local returns="$(echo "$_AGENT_CONFIG" | yq ".tools.functions[$i].returns.description" -)"
+            
+            tool_docs+="### ${name}\n${desc}\n"
+            
+            # Get parameters from properties
+            local params="$(echo "$_AGENT_CONFIG" | yq ".tools.functions[$i].parameters.properties | keys | .[]" -)"
+            local required="$(echo "$_AGENT_CONFIG" | yq ".tools.functions[$i].parameters.required | .[]" -)"
+            
+            # Process each parameter
+            while IFS= read -r param_name; do
+                [[ "$param_name" == "null" ]] && continue
+                
+                local param_type="$(echo "$_AGENT_CONFIG" | yq ".tools.functions[$i].parameters.properties.[\"${param_name}\"].type" -)"
+                local param_desc="$(echo "$_AGENT_CONFIG" | yq ".tools.functions[$i].parameters.properties.[\"${param_name}\"].description" -)"
+                local param_default="$(echo "$_AGENT_CONFIG" | yq ".tools.functions[$i].parameters.properties.[\"${param_name}\"].default" -)"
+                
+                local req_flag="[opt]"
+                [[ "$required" =~ $param_name ]] && req_flag="[req]"
+                
+                tool_docs+="* ${param_name} (${param_type}) ${req_flag} ${param_desc}"
+                [[ "$param_default" != "null" ]] && tool_docs+=" (default: ${param_default})"
+                tool_docs+="\n"
+            done < <(printf '%s\n' "$params")
+            
+            [[ "$returns" != "null" ]] && tool_docs+="* Returns: ${returns}\n"
+            tool_docs+="\n"
+        done
+        
+        # Return the docs as plain text
+        printf '%b' "$tool_docs"
+    fi
+}
+
 # Function to load agent configuration
 load_agent_config() {
     local agent_file="$1"
@@ -332,13 +381,16 @@ load_agent_config() {
     fi
 
     # Load configuration
-    _arg_model=$(echo "$_AGENT_CONFIG" | yq '.model.name')
-    _arg_system=$(echo "$_AGENT_CONFIG" | yq '.system.prompt')
-    _arg_ai_name=$(echo "$_AGENT_CONFIG" | yq '.name')
+    if [[ "$_arg_model" = "" ]]; then
+        _arg_model="$(echo "$_AGENT_CONFIG" | yq -r '.model.name')"
+    fi
+    _arg_system="$(echo "$_AGENT_CONFIG" | yq -r '.system.prompt')"
+    _arg_ai_name="$(echo "$_AGENT_CONFIG" | yq -r '.name')"
 
     # Set API based on provider if not explicitly set
     if [[ -z "$_arg_api" ]]; then
-        local provider=$(yq '.model.provider' "$agent_file")
+        local provider
+        provider="$(yq '.model.provider' "$agent_file" </dev/null)"
         case "$provider" in
         "openai")
             _arg_api="https://api.openai.com/v1/chat/completions"
@@ -353,19 +405,45 @@ load_agent_config() {
     fi
 
     # Load memory window setting
-    local memory_window=$(yq '.settings.memory_window' "$agent_file")
+    local memory_window
+    memory_window="$(yq '.settings.memory_window' "$agent_file" </dev/null)"
     if [[ "$memory_window" != "null" ]]; then
         export MEMORY_WINDOW="$memory_window"
     fi
 
-    # Store system prompt from agent config
-    SYSTEM_PROMPT=$(yq '.system.prompt' "$agent_file")
+    # Build system prompt using jq to handle escaping
+    local prompt_parts=()
+    prompt_parts+=("$_arg_system")
+    
+    # Add system prompt from agent if exists
+    SYSTEM_PROMPT="$(yq '.system.prompt' "$agent_file" </dev/null)"
     if [ "$SYSTEM_PROMPT" != "" ]; then
-        _arg_system+="\n$SYSTEM_PROMPT"
+        prompt_parts+=("$SYSTEM_PROMPT")
     fi
+    
+    # Add agent task if specified
     if [ "$_arg_agent_task" != "" ]; then
-        _arg_system+="\n$_arg_agent_task"
+        prompt_parts+=("$_arg_agent_task")
     fi
+    
+    # Add tool documentation if available
+    local tool_docs
+    tool_docs="$(parse_tool_docs </dev/null)"
+    if [ "$tool_docs" != "" ]; then
+        TOOL_PROMPT="$(yq -r '.system.toolPrompt' "$agent_file" </dev/null)"
+        if [ "$TOOL_PROMPT" != "" ]; then
+            prompt_parts+=("$TOOL_PROMPT")
+        else
+            prompt_parts+=("Available tools:")
+        fi
+        prompt_parts+=("$tool_docs")
+    fi
+
+    # Combine all parts with newlines, no escaping needed
+    _arg_system="$(printf '%s\n' "${prompt_parts[@]}" </dev/null)"
+
+    # echo -e "$_arg_system"
+    # echo -e "############################################################\n\n"
 }
 
 # Configuration
@@ -390,119 +468,25 @@ last_message=""
 log_to_file() {
     local role="$1"
     local content="$2"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local timestamp
+    timestamp="$(date '+%Y-%m-%d %H:%M:%S' </dev/null)"
 
     # Create directory if it doesn't exist
-    mkdir -p "$(dirname "$_arg_log_file")"
+    local logdir
+    logdir="$(dirname "${_arg_log_file}" </dev/null)"
+    mkdir -p "${logdir}"
 
     # Append message to log file in markdown format
-    echo -e "\n### $role ($timestamp)\n\n$content\n" >>"$_arg_log_file"
-}
-
-# Function to escape JSON string
-escape_json() {
-    local str="$1"
-    str="${str//\\/\\\\}"     # escape backslashes
-    str="${str//\"/\\\"}"     # escape quotes
-    str="${str//[$'\t']/\\t}" # escape tabs
-    str="${str//[$'\n']/\\n}" # escape newlines
-    str="${str//[$'\r']/\\r}" # escape carriage returns
-    echo "$str"
-}
-
-# Function to send a message to the LLM API and stream the response
-send_message() {
-    local user_message="$1"
-    local system_message="$2"
-    local tmp_response=$(mktemp)
-    local tmp_payload=$(mktemp)
-
-    # Escape messages
-    user_message=$(escape_json "$user_message")
-    system_message=$(escape_json "$system_message")
-
-    # Build messages array directly in JSON
-    local messages="["
-
-    # Add system message if provided
-    if [[ -n "$system_message" ]]; then
-        messages+="{\"role\":\"system\",\"content\":\"$system_message\"}"
-    fi
-
-    # Add conversation history
-    for msg in "${CONVERSATION_HISTORY[@]}"; do
-        [[ -n "$messages" && "$messages" != "[" ]] && messages+=","
-        messages+="$msg"
-    done
-
-    # Add current user message
-    [[ -n "$messages" && "$messages" != "[" ]] && messages+=","
-    messages+="{\"role\":\"user\",\"content\":\"$user_message\"}"
-    messages+="]"
-
-    # Create the complete payload
-    echo "{\"model\":\"$_arg_model\",\"messages\":$messages,\"stream\":true}" >"$tmp_payload"
-
-    # Debug output
-    echo "DEBUG Payload:" >/tmp/debug_raw
-    cat "$tmp_payload" >>/tmp/debug_raw
-
-    # Send the request and stream response
-    local curl_cmd=(curl -N -s -X POST "$_arg_api"
-        -H "Content-Type: application/json"
-        -d @"$tmp_payload")
-    if [[ -n "$API_KEY" ]]; then
-        curl_cmd+=(-H "Authorization: Bearer $API_KEY")
-    fi
-
-    echo # Add initial newline for spacing
-    "${curl_cmd[@]}" | while IFS= read -r line; do
-        if [[ $line == data:* ]]; then
-            content=$(echo "$line" | sed 's/^data: //g' | grep -o '"content":"[^"]*"' | sed 's/"content":"//;s/"$//')
-            if [[ -n "$content" ]]; then
-                printf '%b' "$content"
-                printf '%b' "$content" >>"$tmp_response"
-            fi
-        fi
-    done
-    echo
-
-    # Get the full response and update conversation history
-    full_response=$(<"$tmp_response")
-    if [[ "$full_response" != "" ]]; then
-        # Escape both messages before adding to history
-        escaped_user_message=$(escape_json "$user_message")
-        escaped_response=$(escape_json "$full_response")
-
-        # Add both messages to history with proper escaping
-        CONVERSATION_HISTORY+=("{\"role\":\"user\",\"content\":\"$escaped_user_message\"}")
-        CONVERSATION_HISTORY+=("{\"role\":\"assistant\",\"content\":\"$escaped_response\"}")
-
-        # Log AI response if enabled
-        if [[ "$_arg_log_ai" == "on" ]]; then
-            log_to_file "$_arg_ai_name" "$full_response"
-        fi
-
-        # Trim history if memory window is set
-        if [[ -n "$MEMORY_WINDOW" ]]; then
-            local window_size=$((MEMORY_WINDOW * 2))
-            if [[ ${#CONVERSATION_HISTORY[@]} -gt $window_size ]]; then
-                CONVERSATION_HISTORY=("${CONVERSATION_HISTORY[@]: -$window_size}")
-            fi
-        fi
-    fi
-
-    export last_message="$(cat "$tmp_response")";
-    rm -f "$tmp_response" "$tmp_payload"
+    echo -e "\n### ${role} (${timestamp})\n\n${content}\n" >> "${_arg_log_file}"
 }
 
 # Function to parse tool calls from the message
 parse_tool_calls() {
     local message="$1"
     # Look for tool calls in the format: {"tool_calls":[{"type":"function","function":{"name":"...","arguments":{...}}}]}
-    if [[ "$message" =~ \{\"tool_calls\"\:\[ ]]; then
-        # Extract and process tool calls
-        echo "$message" | jq -r '.tool_calls[] | select(.type=="function") | .function'
+    if [[ "$message" =~ \"tool_calls\" ]]; then
+        # Extract function calls using sed
+        echo "$message" | sed -n 's/.*"function":\([^}]*}\).*/\1/p'
     fi
 }
 
@@ -515,18 +499,106 @@ execute_agent_tool() {
         # Build the command array
         local cmd=()
         
-        # Parse JSON arguments and add them to command array
-        while IFS="=" read -r key value; do
-            if [[ -n "$key" ]]; then
-                cmd+=("--${key}" "${value}")
-            fi
-        done < <(echo "$arguments" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"')
-        "${cmd[@]}";
+        # Parse arguments using yq with here-strings
+        while IFS= read -r line; do
+            key="$(yq '.key' <<<"$line")"
+            value="$(yq '.value' <<<"$line")"
+            cmd+=("--${key}" "${value}")
+        done < <(yq -o=json '. | to_entries | .[]' <<<"$arguments")
+        "${cmd[@]}"
         return $?
     else
         log "Error: Tool '${tool_name}' not found" -1
         return 1
     fi
+}
+
+# Function to send a message to the LLM API and stream the response
+send_message() {
+    local user_message="$1"
+    local system_message="$2"
+    local tmp_response
+    local tmp_payload
+    local full_response
+    local content
+    local line
+    
+    tmp_response="$(TMPDIR="${TMPDIR:-/tmp}" mktemp </dev/null)" || return 1
+    tmp_payload="$(TMPDIR="${TMPDIR:-/tmp}" mktemp </dev/null)" || return 1
+
+    # Create the JSON payload using jq to handle all escaping
+    if [ "$system_message" != "" ] && [ "$user_message" != "" ]; then
+        jq -R -s '.' <<<"$system_message" > "$tmp_payload.system"
+        jq -R -s '.' <<<"$user_message" > "$tmp_payload.user"
+        printf '{
+            "model": "%s",
+            "messages": [
+                {"role": "system", "content": %s},
+                {"role": "user", "content": %s}
+            ],
+            "stream": true
+        }' "${_arg_model,,}" "$(cat "$tmp_payload.system" </dev/null)" "$(cat "$tmp_payload.user" </dev/null)" > "$tmp_payload"
+        rm -f "$tmp_payload.system" "$tmp_payload.user"
+    fi
+
+    # Send the request and stream response
+    local curl_cmd=(curl -N -s -X POST "$_arg_api"
+        -H "Content-Type: application/json"
+        -d @"$tmp_payload")
+    if [ "$API_KEY" != "" ]; then
+        curl_cmd+=(-H "Authorization: Bearer $API_KEY")
+    fi
+
+    # Execute curl and process response
+    "${curl_cmd[@]}" 2>/dev/null | while IFS= read -r line || [ -n "$line" ]; do
+        if [ "${line:0:5}" = "data:" ]; then
+            line="${line#data: }"
+            if [ "$line" != "" ] && [ "$line" != "[DONE]" ]; then
+                printf '%s\n' "$line" >> "$tmp_response"
+                # Extract content directly between "content":"..." without jq
+                if [[ "$line" =~ \"content\":\"([^\"]*)\" ]]; then
+                    content="${BASH_REMATCH[1]}"
+                    printf '%b' "${content//\\\"/\"}"
+                fi
+            fi
+        fi
+    done
+    printf '\n'
+
+    # Get the full response and update conversation history
+    if [ -f "$tmp_response" ]; then
+        full_response="$(cat "$tmp_response")"
+        if [ "$full_response" != "" ]; then
+            # Add messages to history with proper escaping
+            local user_json
+            local assistant_json
+            user_json="$(printf '{"role":"user","content":%s}' "$(printf '%s' "$user_message" | jq -R -s '.')")"
+            assistant_json="$(printf '{"role":"assistant","content":%s}' "$(printf '%s' "$full_response" | jq -R -s '.')")"
+            
+            CONVERSATION_HISTORY+=("$user_json")
+            CONVERSATION_HISTORY+=("$assistant_json")
+
+            # Log AI response if enabled
+            if [ "$_arg_log_ai" = "on" ]; then
+                log_to_file "$_arg_ai_name" "$full_response"
+            fi
+
+            # Trim history if memory window is set
+            if [ "$MEMORY_WINDOW" != "" ]; then
+                local window_size=$((MEMORY_WINDOW * 2))
+                if [ ${#CONVERSATION_HISTORY[@]} -gt $window_size ]; then
+                    CONVERSATION_HISTORY=("${CONVERSATION_HISTORY[@]: -$window_size}")
+                fi
+            fi
+        fi
+    fi
+
+    # Export last message
+    if [ -f "$tmp_response" ]; then
+        last_message="$(cat "$tmp_response")"
+        export last_message
+    fi
+    rm -f "$tmp_response" "$tmp_payload"
 }
 
 # Main loop for user interaction
@@ -545,24 +617,24 @@ fi
 
 while true; do
     echo
-    user_input=$(rlwrap -S "$_arg_username: " bash -c 'read -r line; echo $line')
+    user_input="$(rlwrap -S "${_arg_username}: " bash -c 'read -r line && echo "${line}"')"
     if [[ "$user_input" == "/bye" ]]; then
         echo "Goodbye!"
         break
-    elif [[ "$user_input" =~ ^/task ]] && [ "$_AGENT_CONFIG" != "" ]; then
-        task_name=$(echo "$user_input" | cut -d' ' -f2-)
-        task=$(echo "$_AGENT_CONFIG" | yq ".tasks.$task_name")
-        if [ "$task" = "" ]; then
-            echo "Task not found: $task_name"
-        else
-            task_prompt=$(echo "$task" | yq ".prompt")
-            message_after_task=$(echo "$user_input" | cut -d' ' -f3-)
-            if [ "$message_after_task" != "" ]; then
-                task_prompt+=$message_after_task
-            fi
-            send_message "$task_prompt" "$SYSTEM_PROMPT"
-        fi
-        continue
+    # elif [[ "$user_input" =~ ^/task ]] && [ "$_AGENT_CONFIG" != "" ]; then
+    #     task_name="$(echo "$user_input" | cut -d' ' -f2-)"
+    #     task="$(echo "$_AGENT_CONFIG" | yq ".tasks.$task_name")"
+    #     if [ "$task" = "" ]; then
+    #         echo "Task not found: $task_name"
+    #     else
+    #         task_prompt="$(echo "$task" | yq ".prompt")"
+    #         message_after_task="$(echo "$user_input" | cut -d' ' -f3-)"
+    #         if [ "$message_after_task" != "" ]; then
+    #             task_prompt="$task_prompt$message_after_task"
+    #         fi
+    #         send_message "$task_prompt" "$SYSTEM_PROMPT"
+    #     fi
+    #     continue
     fi
     if [[ "$_arg_log_user" == "on" ]]; then
         log_to_file "$_arg_username" "$user_input"
@@ -571,18 +643,19 @@ while true; do
     send_message "$user_input" "$SYSTEM_PROMPT"
     
     # Check for tool calls in the last message
-    if [[ "$last_message" != "" ]]; then
-        tool_calls=$(parse_tool_calls "$last_message")
-        if [[ "$tool_calls" != "" ]]; then
-            while IFS= read -r tool_call; do
-                tool_name=$(echo "$tool_call" | jq -r '.name')
-                tool_args=$(echo "$tool_call" | jq -r '.arguments')
-                tool_result=$(execute_agent_tool "$tool_name" "$tool_args")
+    # if [[ "$last_message" != "" ]]; then
+        # tool_calls=$(parse_tool_calls "$last_message")
+        # if [[ "$tool_calls" != "" ]]; then
+        #     while IFS= read -r tool_call; do
+        #         tool_name=$(echo "$tool_call" | jq -r '.name')
+        #         tool_args=$(echo "$tool_call" | jq -r '.arguments')
+        #         tool_result=$(execute_agent_tool "$tool_name" "$tool_args")
                 
-                # Send tool result back to the conversation
-                # send_message "Tool '$tool_name' result: $tool_result" "$SYSTEM_PROMPT"
-            done <<< "$tool_calls"
-        fi
-    fi
+        #         # Send tool result back to the conversation
+        #         # send_message "Tool '$tool_name' result: $tool_result" "$SYSTEM_PROMPT"
+        #     done <<< "$tool_calls"
+        # fi
+        # echo "$tool_calls"
+    # fi
 
 done
