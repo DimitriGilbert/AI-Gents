@@ -1,0 +1,154 @@
+name: AI-gent
+version: "0.0.1"
+description: "A generic AI agent"
+
+# Model configuration
+model:
+  provider: lmstudio
+  name: llama-3.2-3b-instruct
+  temperature: 0.7
+
+system:
+  prompt: "You are AI-gent, a helpful AI assistant that provides clear and concise responses."
+
+# Agent settings
+settings:
+  memory_window: 10
+  max_conversation_turns: 30
+
+tasks:
+  fresh_context: 
+    description: "get the agent to craft a fresh context"
+    prompt: |
+      Create a detailed and effective system prompt based on the provided conversation history as to continue it.
+
+      Analyze the task requirements carefully, identifying key objectives, constraints, desired outcomes, and the work done so far. If an existing prompt is provided, preserve its core elements while enhancing clarity and completeness.
+
+      # Steps
+      1. Task Analysis
+         - Identify main objective and goals
+         - Note any specific requirements or constraints
+         - Determine expected output format and structure
+      
+      2. History Analysis
+         - Identify the work done so far
+         - Note any specific successes or failures
+         - Determine what to include in the new prompt
+
+      3. Prompt Structure
+         - Begin with clear, concise instruction
+         - Include necessary context and background
+         - Break down complex tasks into steps
+         - Specify output format requirements
+         - Add relevant examples if helpful
+
+      4. Quality Checks
+         - Ensure reasoning precedes conclusions
+         - Verify clarity and specificity
+         - Confirm all user-provided content is preserved
+         - Validate example quality and placeholder usage
+
+      # Output Format
+      The prompt should be formatted in markdown with the following structure:
+      ```
+      [Main instruction]
+
+      [Context and details]
+
+      # Steps (if needed)
+      [Detailed steps]
+
+      # Output Format
+      [Format specifications]
+
+      # Examples (if needed)
+      [Well-structured examples]
+
+      # Notes (if needed)
+      [Additional considerations]
+      ```
+
+      # Examples (**FOR DEMONSTRATION PURPOSES ONLY**)
+      Input: "Create a product description for an e-commerce site"
+
+      Output:
+      Write a compelling product description that effectively communicates key features and benefits.
+
+      Consider the target audience, unique selling points, and practical applications of the product.
+
+      # Steps
+      1. Analyze key product features
+      2. Identify primary benefits
+      3. Determine target audience needs
+      4. Craft engaging description
+
+      # Output Format
+      Provide a 2-3 paragraph description (150-200 words) including:
+      - Attention-grabbing opening
+      - Feature-benefit connections
+      - Clear call-to-action
+
+      # Examples
+      Input: [Product: Wireless Earbuds]
+      Output: 
+      [2-3 compelling paragraphs describing features and benefits]
+      (Note: Actual descriptions should be fully written out)
+
+      # Notes
+      - Maintain professional tone
+      - Focus on benefits over features
+      - Include technical specifications where relevant
+
+tools:
+  functions:
+    - name: "fs_list"
+      description: "List the files in a directory"
+      parameters:
+        type: "object"
+        properties:
+          directory:
+            type: "string"
+            description: "The directory to list the files from"
+            default: "."
+        required: ["directory"]
+      returns:
+        type: "string"
+        description: "The list of files and directories in the directory"
+    
+    - name: "fs_read"
+      description: "Read the contents of a file"
+      parameters:
+        type: "object"
+        properties:
+          file:
+            type: "string"
+            description: "The file to read"
+        required: ["file"]
+      returns:
+        type: "string"
+        description: "The contents of the file"
+    
+    - name: "fs_write"
+      description: "Write to a file"
+      parameters:
+        type: "object"
+        properties:
+          file:
+            type: "string"
+            description: "The file to write to"
+          content:
+            type: "string"
+            description: "The content to write to the file"
+          mode:
+            type: "string"
+            description: "The mode to write the file in"
+            enum: ["w", "a"]
+            default: "w"
+          backup:
+            type: "boolean"
+            description: "Whether to backup the file before writing"
+            default: false
+        required: ["file", "content"]
+      returns:
+        type: "string"
+        description: "Success or error message"
