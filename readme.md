@@ -38,21 +38,29 @@ Well, you too can use it (at your own expense !)
 ### ai
 
 ask or chat with an ai, from your terminal, create and chat with agents too:
-```
+
+```bash
 	target: what to do [one of 'agent' 'ask' 'chat' '<your prompt>']
 # Usage :
 	ai <target>
 # Examples :
+  # start a chat
   ai "what does 'oulala' mean in french ?"
-	ai ask "why is the sky blue (exept in Britanny) ?"
-	ai chat "what is the most common weather in Paris ?"
-	ai agent ask Maurice "could i have the Menu ?"
-	ai agent chat Maurice "how is the baguette going ?"
+  # ask something to an ai
+  ai ask "why is the sky blue (exept in Britanny) ?"
+  # start a chat with an ai
+  ai chat "what is the most common weather in Paris ?"
+  # create an agent
+  ai agent create Maurice --prompt "You are Maurice, a typical unpolite and rude parisian waiter." --provider openai --model gpt-4o-mini
+  # ask something to an agent
+  ai agent ask Maurice "could i have the Menu ?"
+  # start a chat with an agent
+  ai agent chat Maurice "how is the baguette going ?"
 ```
 
 ### ai ask
 
-```
+```bash
 ask something to an AI:
 	prompt: what to ask
 	--api <api>: api url
@@ -68,7 +76,7 @@ ask something to an AI:
 
 ### ai chat
 
-```
+```bash
 Chat with an AI:
 	prompt: what to ask
 	--api <api>: api url
@@ -88,8 +96,9 @@ Chat with an AI:
 
 ### ai agent
 
-```
 work with an AI agent:
+
+```bash
 	target: what to do
 # Usage :
 	ai agent <target>
@@ -97,8 +106,9 @@ work with an AI agent:
 
 #### ai agent ask
 
-```
 ask an AI agent:
+
+```bash
 	agent: existing agent name, agent file path or url
 	prompt: what to ask
 	--api <api>: api url
@@ -114,8 +124,9 @@ ask an AI agent:
 
 #### ai agent chat
 
-```
 chat with an AI agent:
+
+```bash
 	agent: agent name, file path or url
 	prompt: what to ask
 	--api <api>: api url
@@ -135,8 +146,9 @@ chat with an AI agent:
 
 #### ai agent create
 
-```
 create an agent:
+
+```bash
 	name: agent name
 	--prompt <prompt>: agent system prompt
 	--provider <provider>: llm provider
@@ -148,8 +160,9 @@ create an agent:
 
 #### ai agent list
 
-```
 list existing agent:
+
+```bash
 # Usage :
 	ai agent list
 ```
