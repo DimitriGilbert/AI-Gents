@@ -1,0 +1,27 @@
+#!/bin/bash
+
+export DEFAULT_PROVIDER="lmstudio"
+
+get_llm_provider_url() {
+  local provider="${1:-${DEFAULT_PROVIDER}}"
+  local url=""
+  case "$provider" in
+  "openai")
+    url="https://api.openai.com"
+    ;;
+  "lmstudio")
+    url="http://localhost:1234"
+    ;;
+  "ollama")
+    url="http://localhost:11434"
+    ;;
+  "openrouter")
+    url="https://openrouter.ai/api"
+    ;;
+  *)
+    echo "Unsupported provider: $provider" 1
+    exit 1
+    ;;
+  esac
+  echo "${url}/v1"
+}
