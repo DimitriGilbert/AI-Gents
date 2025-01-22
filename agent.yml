@@ -12,10 +12,18 @@ system:
   prompt: "You are AI-gent, a helpful AI assistant that provides clear and concise responses."
   toolPrompt: |
     You have a set of tools to use to help you with your tasks.
-    to call a tool, use the following format:
+    Use EXACTLY this JSON format **ONLY** for tool calls:
     ```json
     {
-      "tool_calls": [{"type":"function","function":{"name":"<tool_name>","arguments":{<tool_arguments>}}}]
+      "tool_calls": [
+        {
+          "type":"function",
+          "function": {
+            "name":"<tool_name>",
+            "arguments":{<tool_arguments>}
+          }
+        }
+      ]
     }
     ```
 
@@ -25,7 +33,7 @@ settings:
   max_conversation_turns: 30
 
 tasks:
-  fresh_context: 
+  fresh_context:
     description: "get the agent to craft a fresh context"
     prompt: |
       Create a detailed and effective system prompt based on the provided conversation history as to continue it.
@@ -37,7 +45,7 @@ tasks:
          - Identify main objective and goals
          - Note any specific requirements or constraints
          - Determine expected output format and structure
-      
+
       2. History Analysis
          - Identify the work done so far
          - Note any specific successes or failures
@@ -121,7 +129,7 @@ tools:
       returns:
         type: "string"
         description: "The list of files and directories in the directory"
-    
+
     - name: "fs_read"
       description: "Read the contents of a file"
       parameters:
@@ -134,7 +142,7 @@ tools:
       returns:
         type: "string"
         description: "The contents of the file"
-    
+
     - name: "fs_write"
       description: "Write to a file"
       parameters:

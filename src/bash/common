@@ -7,23 +7,26 @@ get_llm_provider_url() {
   local url=""
   case "$provider" in
   "openai")
-    url="https://api.openai.com"
+    url="https://api.openai.com/v1"
     ;;
   "lmstudio")
-    url="http://localhost:1234"
+    url="http://localhost:1234/v1"
     ;;
   "ollama")
-    url="http://localhost:11434"
+    url="http://localhost:11434/v1"
     ;;
   "openrouter")
-    url="https://openrouter.ai/api"
+    url="https://openrouter.ai/api/v1"
+    ;;
+  "deepseek")
+    url="https://api.deepseek.com"
     ;;
   *)
     echo "Unsupported provider: $provider" 1
     exit 1
     ;;
   esac
-  echo "${url}/v1"
+  echo "${url}"
 }
 
 # Function to get agent config file path from name
@@ -92,6 +95,7 @@ handle_agent_command() {
   local agent_system
   agent_system="$(yq -r '.system.prompt' "$agent_file")"
 
+#  tools break llm for now
 #   # Get tools description and format them
 #   local tools_prompt
 #   tools_prompt="$(yq -r '.system.toolPrompt' "$agent_file")"
