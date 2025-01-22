@@ -524,6 +524,7 @@ send_message() {
     local line
     
     tmp_response="$(TMPDIR="${TMPDIR:-/tmp}" mktemp </dev/null)" || return 1
+    tmp_response_text="$(TMPDIR="${TMPDIR:-/tmp}" mktemp </dev/null)" || return 1
     tmp_payload="$(TMPDIR="${TMPDIR:-/tmp}" mktemp </dev/null)" || return 1
 
     # Create the JSON payload using jq to handle all escaping
@@ -549,18 +550,30 @@ send_message() {
         curl_cmd+=(-H "Authorization: Bearer $API_KEY")
     fi
 
+    # die "${curl_cmd[*]}";
     # Execute curl and process response
     "${curl_cmd[@]}" 2>/dev/null | while IFS= read -r line || [ -n "$line" ]; do
+        # echo "$line"
         if [ "${line:0:5}" = "data:" ]; then
             line="${line#data: }"
             if [ "$line" != "" ] && [ "$line" != "[DONE]" ]; then
                 printf '%s\n' "$line" >> "$tmp_response"
+                # Check for error response
+                if [[ "$line" =~ \"error\":\{.*\"message\":\"([^\"]*)\" ]]; then
+                    error_msg="${BASH_REMATCH[1]}"
+                    die "API Error: ${error_msg}" -2
+                fi
                 # Extract content directly between "content":"..." without jq
                 if [[ "$line" =~ \"content\":\"([^\"]*)\" ]]; then
                     content="${BASH_REMATCH[1]}"
-                    printf '%b' "${content//\\\"/\"}"
+                    printf '%b' "${content//\\\"/\"}" >> "$tmp_response_text";
+                    printf '%b' "${content//\\\"/\"}";
                 fi
             fi
+        elif [[ "$line" =~ \"error\":\{.*\"message\":\"([^\"]*)\" ]]; then
+            # Handle non-streaming error responses
+            error_msg="${BASH_REMATCH[1]}"
+            die "API Error: ${error_msg}" -2
         fi
     done
     printf '\n'
@@ -580,7 +593,7 @@ send_message() {
 
             # Log AI response if enabled
             if [ "$_arg_log_ai" = "on" ]; then
-                log_to_file "$_arg_ai_name" "$full_response"
+                log_to_file "$_arg_ai_name" "$(cat "$tmp_response_text")"
             fi
 
             # Trim history if memory window is set
@@ -594,11 +607,11 @@ send_message() {
     fi
 
     # Export last message
-    if [ -f "$tmp_response" ]; then
-        last_message="$(cat "$tmp_response")"
+    if [ -f "$tmp_response_text" ]; then
+        last_message="$(cat "$tmp_response_text")"
         export last_message
     fi
-    rm -f "$tmp_response" "$tmp_payload"
+    rm -f "$tmp_response" "$tmp_payload" "$tmp_response_text"
 }
 
 # Main loop for user interaction
@@ -621,20 +634,20 @@ while true; do
     if [[ "$user_input" == "/bye" ]]; then
         echo "Goodbye!"
         break
-    # elif [[ "$user_input" =~ ^/task ]] && [ "$_AGENT_CONFIG" != "" ]; then
-    #     task_name="$(echo "$user_input" | cut -d' ' -f2-)"
-    #     task="$(echo "$_AGENT_CONFIG" | yq ".tasks.$task_name")"
-    #     if [ "$task" = "" ]; then
-    #         echo "Task not found: $task_name"
-    #     else
-    #         task_prompt="$(echo "$task" | yq ".prompt")"
-    #         message_after_task="$(echo "$user_input" | cut -d' ' -f3-)"
-    #         if [ "$message_after_task" != "" ]; then
-    #             task_prompt="$task_prompt$message_after_task"
-    #         fi
-    #         send_message "$task_prompt" "$SYSTEM_PROMPT"
-    #     fi
-    #     continue
+    elif [[ "$user_input" =~ ^/task ]] && [ "$_AGENT_CONFIG" != "" ]; then
+        task_name="$(echo "$user_input" | cut -d' ' -f2-)"
+        task="$(echo "$_AGENT_CONFIG" | yq ".tasks.$task_name")"
+        if [ "$task" = "" ]; then
+            echo "Task not found: $task_name"
+        else
+            task_prompt="$(echo "$task" | yq ".prompt")"
+            message_after_task="$(echo "$user_input" | cut -d' ' -f3-)"
+            if [ "$message_after_task" != "" ]; then
+                task_prompt="$task_prompt$message_after_task"
+            fi
+            send_message "$task_prompt" "$SYSTEM_PROMPT"
+        fi
+        continue
     fi
     if [[ "$_arg_log_user" == "on" ]]; then
         log_to_file "$_arg_username" "$user_input"
