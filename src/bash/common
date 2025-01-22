@@ -25,3 +25,137 @@ get_llm_provider_url() {
   esac
   echo "${url}/v1"
 }
+
+# Function to get agent config file path from name
+get_agent_file() {
+  local agent="$1"
+  # First check if it's a file path
+  if [ -f "$agent" ]; then
+    echo "$agent"
+    return 0
+  fi
+
+  # Then check if it's a URL
+  if [[ "$agent" =~ ^https?:// ]]; then
+    local tmp_file
+    tmp_file="$(TMPDIR="${TMPDIR:-/tmp}" mktemp </dev/null)" || return 1
+    if curl -fsSL "$agent" -o "$tmp_file"; then
+      echo "$tmp_file"
+      return 0
+    fi
+    rm -f "$tmp_file"
+    return 1
+  fi
+
+  # Finally check if it's an agent name
+  local config_file="$HOME/.config/ai-gents/agents/${agent}.yml"
+  if [ -f "$config_file" ]; then
+    echo "$config_file"
+    return 0
+  fi
+
+  return 1
+}
+
+# Function to handle agent command building
+handle_agent_command() {
+  local agent="$1"
+  local prompt="$2"
+  local cmd_name="$3"
+  local provider="$4"
+  local model="$5"
+  local system="$6"
+  local api="$7"
+  local api_key="$8"
+  local conversation="$9"
+  shift 9
+
+  # Extract provider from model if in format provider:model
+  if [ "$provider" = "" ] && [[ "$model" == *":"* ]]; then
+    provider="${model%%:*}"
+    model="${model#*:}"
+  fi
+
+  # Get agent configuration file
+  local agent_file
+  agent_file="$(get_agent_file "$agent")" || die "Could not find agent: $agent" 1
+
+  # Get values from agent config for any parameter not provided by user
+  if [ "$provider" = "" ]; then
+    provider="$(yq -r '.model.provider' "$agent_file")"
+  fi
+  if [ "$model" = "" ]; then
+    model="$(yq -r '.model.name' "$agent_file")"
+  fi
+
+  # Get agent system prompt and concatenate with user system if provided
+  local agent_system
+  agent_system="$(yq -r '.system.prompt' "$agent_file")"
+
+#   # Get tools description and format them
+#   local tools_prompt
+#   tools_prompt="$(yq -r '.system.toolPrompt' "$agent_file")"
+#   if [ "$tools_prompt" != "" ] && [ "$tools_prompt" != "null" ]; then
+#     # Add tools description
+#     if [ "$agent_system" != "" ]; then
+#       agent_system="$agent_system
+
+# $tools_prompt"
+#     else
+#       agent_system="$tools_prompt"
+#     fi
+
+#     # Add tools list
+#     local tools_list
+#     tools_list="$(yq -r '.tools.functions[] | "- " + .name + ": " + .description' "$agent_file")"
+#     if [ "$tools_list" != "" ]; then
+#       agent_system="$agent_system
+
+# Available tools:
+# $tools_list"
+#     fi
+#   fi
+
+  # Add user system prompt if provided
+  if [ "$agent_system" != "" ]; then
+    if [ "$system" != "" ]; then
+      system="$agent_system
+
+$system"
+    else
+      system="$agent_system"
+    fi
+  fi
+
+  # Clean up temporary file if it was a URL
+  if [[ "$agent" =~ ^https?:// ]]; then
+    rm -f "$agent_file"
+  fi
+
+  # Build command with all provided arguments
+  local cmd=("$cmd_name" "$prompt")
+  if [ "$api" != "" ]; then
+    cmd+=(--api "$api")
+  fi
+  if [ "$api_key" != "" ]; then
+    cmd+=(--api-key "$api_key")
+  fi
+  if [ "$model" != "" ]; then
+    cmd+=(--model "$model")
+  fi
+  if [ "$system" != "" ]; then
+    cmd+=(--system "$system")
+  fi
+  if [ "$conversation" != "" ]; then
+    cmd+=(--conversation "$conversation")
+  fi
+  if [ "$provider" != "" ]; then
+    cmd+=(--provider "$provider")
+  fi
+
+  # Add any additional arguments passed to the function
+  cmd+=("$@")
+
+  # Execute the command
+  "${cmd[@]}"
+}
