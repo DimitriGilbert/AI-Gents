@@ -1,4 +1,5 @@
-### AI-gents
+
+## AI-gents.
 
 A simple format for AI agents.
 
@@ -28,7 +29,7 @@ tasks:
     prompt: "summarize the content given by the user"
 ```
 
-### AI, in your terminal
+## AI, in your terminal
 
 I had to test the thing, I write bash.... meh, I'm gonna write meself a bash chat app !
 
