@@ -1,9 +1,9 @@
 #!/bin/bash
 
-export DEFAULT_PROVIDER="lmstudio"
+export AI_DEFAULT_PROVIDER="lmstudio"
 
 get_llm_provider_url() {
-  local provider="${1:-${DEFAULT_PROVIDER}}"
+  local provider="${1:-${AI_DEFAULT_PROVIDER}}"
   local url=""
   case "$provider" in
   "openai")
