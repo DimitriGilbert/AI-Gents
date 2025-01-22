@@ -224,6 +224,11 @@ if [ ! -d "$HOME/.config/ai-gents" ]; then
 	mkdir -p "$HOME/.config/ai-gents"
 fi
 
+if [ "$_arg_target" = "" ]; then
+	print_help
+	exit 0
+fi
+
 # if target is not one of allowed values, use chat
 is_ai_target=0
 for value in "${_one_of_arg_target[@]}"; do
