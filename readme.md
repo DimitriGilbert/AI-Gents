@@ -1,4 +1,4 @@
-## AI-gents
+### AI-gents
 
 A simple format for AI agents.
 
@@ -10,7 +10,7 @@ system:
   prompt: "You are AI-gent, a helpful AI assistant that provides clear and concise responses."
 ```
 
-### more configuration
+#### more configuration
 
 ```yaml
 # Model configuration
@@ -28,7 +28,7 @@ tasks:
     prompt: "summarize the content given by the user"
 ```
 
-## AI, in your terminal
+### AI, in your terminal
 
 I had to test the thing, I write bash.... meh, I'm gonna write meself a bash chat app !
 
