@@ -379,6 +379,11 @@ if [[ "$_arg_api" != */chat/completions ]]; then
 	_arg_api="$_arg_api/chat/completions"
 fi
 
+# Get API key from credentials if not provided
+if [ "$_arg_api_key" = "" ] && [ "$_arg_provider" != "" ]; then
+	_arg_api_key="$(get_provider_credential "$_arg_provider")"
+fi
+
 # Send the request and stream response
 curl_cmd=(curl -f -X POST "$_arg_api"
 	-H "Content-Type: application/json"

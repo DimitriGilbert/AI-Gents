@@ -29,6 +29,18 @@ get_llm_provider_url() {
   echo "${url}"
 }
 
+get_provider_credential() {
+  local provider="${1:-${AI_DEFAULT_PROVIDER}}"
+  local cred_file="$HOME/.config/ai-gents/credentials/${provider}"
+  
+  if [ -f "$cred_file" ]; then
+    cat "$cred_file"
+    return 0
+  fi
+  
+  return 1
+}
+
 # Function to get agent config file path from name
 get_agent_file() {
   local agent="$1"
@@ -103,6 +115,11 @@ handle_agent_command() {
   fi
   if [ "$model" = "" ]; then
     model="$(yq -r '.model.name' "$agent_file")"
+  fi
+  
+  # Get API key from credentials if not provided
+  if [ "$api_key" = "" ] && [ "$provider" != "" ]; then
+    api_key="$(get_provider_credential "$provider")"
   fi
 
   # Get agent system prompt and concatenate with user system if provided

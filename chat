@@ -654,21 +654,4 @@ while true; do
     fi
     echo -n "$_arg_ai_name: "
     send_message "$user_input" "$SYSTEM_PROMPT"
-    
-    # Check for tool calls in the last message
-    # if [[ "$last_message" != "" ]]; then
-        # tool_calls=$(parse_tool_calls "$last_message")
-        # if [[ "$tool_calls" != "" ]]; then
-        #     while IFS= read -r tool_call; do
-        #         tool_name=$(echo "$tool_call" | jq -r '.name')
-        #         tool_args=$(echo "$tool_call" | jq -r '.arguments')
-        #         tool_result=$(execute_agent_tool "$tool_name" "$tool_args")
-                
-        #         # Send tool result back to the conversation
-        #         # send_message "Tool '$tool_name' result: $tool_result" "$SYSTEM_PROMPT"
-        #     done <<< "$tool_calls"
-        # fi
-        # echo "$tool_calls"
-    # fi
-
 done
