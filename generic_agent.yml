@@ -1,0 +1,47 @@
+# AI Agent Framework (Generic Version)
+name: AgentBase
+description: "A flexible AI agent configuration template"
+
+# Model Setup
+
+system:
+  prompt: "You are AI-gent, a helpful AI assistant that provides clear and concise responses."
+  temperature: 0.7 # temperature of the model
+  max_tokens: 1000 # max tokens to generate
+  memory_window: 10 # number of messages to keep in memory
+  max_conversation_turns: 30 # number of turns in a conversation
+  models:
+    default: # default model
+      provider: openai  # [openai, anthropic, ollama, etc.]
+      name: gpt-4o-mini  # Provider-specific model ID
+    localLLama3.2.3: # variant model with optionnal configuration
+      provider: ollama  # [openai, anthropic, ollama, etc.]
+      name: llama3.2-3b-instruct  # Provider-specific model ID
+      prompt: "You are AI-gent, a helpful AI assistant that provides clear and **VERY** concise responses."
+      temperature: 0.5
+      max_tokens: 500
+      memory_window: 5
+      max_conversation_turns: 10
+
+
+# Knowledge Sources (optional)
+knowledge:
+  files:
+    - path: "common_responses.json"
+      description: "Frequently used response templates"
+  urls:
+    - "https://example.com/knowledge-base"
+
+# Task Definitions
+tasks:
+  summarize: # summarize task example
+    description: "Condense content into key points"
+    prompt: |
+      Summarize the following content:
+      {content}
+      
+      Include:
+      * Main topic
+      * 3-5 key points
+      * Any important numbers/dates
+      * relevant links

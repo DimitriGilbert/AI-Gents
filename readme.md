@@ -19,6 +19,11 @@ model:
   provider: openai | lmstudio | ollama | openrouter | deepseek
   name: <api id of the model to use>
 
+# files
+files:
+  <file name>: <file path>
+	...
+
 # Agent tasks
 tasks:
   a_common_task:
@@ -29,7 +34,7 @@ tasks:
     prompt: "summarize the content given by the user"
 ```
 
-## AI, in your terminal
+## AI, in your terminal
 
 I had to test the thing, I write bash.... meh, I'm gonna write meself a bash chat app !
 

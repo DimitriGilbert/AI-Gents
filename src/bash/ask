@@ -291,6 +291,31 @@ if [ "$_arg_provider" != "" ]; then
 	_arg_api="$(get_llm_provider_url "$_arg_provider")/chat/completions"
 fi
 
+#  extract commands between #!/ and ; from user prompt
+_arg_prompt_cmds=()
+matches=()
+prompt_copy="$_arg_prompt"
+while [[ "$prompt_copy" =~ \#\!/([^;]+)\; ]]; do
+	cmd="${BASH_REMATCH[1]}"
+	matches+=("${BASH_REMATCH[0]}")
+	_arg_prompt_cmds+=("$cmd")
+	prompt_copy="${prompt_copy//"${BASH_REMATCH[0]}"/ }"
+done
+
+if [ "${#_arg_prompt_cmds[@]}" -gt 0 ]; then
+	# for each line, fill an array with each command and its arguments
+	for i in "${!_arg_prompt_cmds[@]}"; do
+		cmd="${_arg_prompt_cmds[$i]}"
+		match="${matches[$i]}"
+		# split the command into an array
+		read -ra _tmpCmd <<<"$cmd"
+		# execute the command and get its output
+		to_put_in_arg_prompt="$("${_tmpCmd[@]}" 2>&1)"
+		# replace the match with the output of the command
+		_arg_prompt="${_arg_prompt//$match/$to_put_in_arg_prompt}"
+	done
+fi
+
 # Create the JSON payload using jq to handle all escaping
 if [ "$_arg_conversation" != "" ]; then
 	# Read messages from conversation file
@@ -302,21 +327,21 @@ if [ "$_arg_conversation" != "" ]; then
 			fi
 			messages="$messages$line"
 		fi
-	done < "$_arg_conversation"
-	
+	done <"$_arg_conversation"
+
 	# Add current user message
 	if [ "$messages" != "[" ]; then
 		messages="$messages,"
 	fi
 	messages="$messages{\"role\": \"user\", \"content\": $(jq -R -s '.' <<<"$_arg_prompt")}"
 	messages="$messages]"
-	
+
 	# Create payload with conversation history
 	printf '{
 		"model": "%s",
 		"messages": %s,
 		"stream": %s
-	}' "${_arg_model,,}" "$messages" "$_streamVal" > "$tmp_payload"
+	}' "${_arg_model,,}" "$messages" "$_streamVal" >"$tmp_payload"
 elif [ "$_arg_system" != "" ] && [ "$_arg_prompt" != "" ]; then
 	jq -R -s '.' <<<"$_arg_system" >"$tmp_payload.system"
 	jq -R -s '.' <<<"$_arg_prompt" >"$tmp_payload.user"
@@ -389,7 +414,7 @@ else
 	response="$("${curl_cmd[@]}" 2>/dev/null)"
 	http_code=$(echo "$response" | tail -n1)
 	response=$(echo "$response" | head -n -1)
-	
+
 	# Check for error in response
 	if [ -n "$response" ]; then
 		if [[ "$response" =~ \"error\":\{.*\"message\":\"([^\"]*)\" ]]; then
@@ -397,11 +422,11 @@ else
 			die "API Error: $error_msg" -2
 		fi
 	fi
-	
+
 	if [ "$http_code" != "200" ]; then
 		die "API Error: HTTP status code $http_code" -2
 	fi
-	
+
 	if [ -n "$response" ]; then
 		# Extract content without using jq
 		if [[ "$response" =~ \"content\":\"([^\"]*)\" ]]; then
@@ -414,4 +439,3 @@ fi
 # echo "$tmp_payload"
 # Remove temporary files
 rm -f "$tmp_response" "$tmp_payload"
-
