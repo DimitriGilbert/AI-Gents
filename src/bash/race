@@ -19,40 +19,39 @@ fi
 # @parseArger flag judge-individual "judge each response on its own"
 # @parseArger flag judge-together "judge all response together" --on
 # @parseArger flag parallel "execute task in parallel when  possible" --on --no-name sequential
+# @parseArger flag combine-with-individual-judgement "add individual judgement to the combining prompt" --alias comb-indiv --alias combine-individual
+# @parseArger flag combine-with-comparative-judgement "add comparative judgement to combine prompt" --alias comb-comp --alias combine-comparative
 # @parseArger-declarations-end
 
 # @parseArger-utils
-_helpHasBeenPrinted=1;
-_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)";
+_helpHasBeenPrinted=1
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # @parseArger-utils-end
 
 # @parseArger-parsing
 
-__cli_arg_count=$#;
+__cli_arg_count=$#
 
-die()
-{
+die() {
 	local _ret=1
-    if [[ -n "$2" ]] && [[ "$2" =~ ^[0-9]+$ ]]; then
-   	_ret="$2"
-    fi
+	if [[ -n "$2" ]] && [[ "$2" =~ ^[0-9]+$ ]]; then
+		_ret="$2"
+	fi
 	test "${_PRINT_HELP:-no}" = yes && print_help >&2
 	log "$1" -3 >&2
 	exit "${_ret}"
 }
 
-
-begins_with_short_option()
-{
+begins_with_short_option() {
 	local first_option all_short_options=''
 	first_option="${1:0:1}"
 	test "$all_short_options" = "${all_short_options/$first_option/}" && return 1 || return 0
 }
 
 # POSITIONALS ARGUMENTS
-_positionals=();
-_optional_positionals=();
-_arg_prompt="";
+_positionals=()
+_optional_positionals=()
+_arg_prompt=""
 # OPTIONALS ARGUMENTS
 _arg_model=()
 _arg_judge_model=()
@@ -63,233 +62,239 @@ _arg_judge="off"
 _arg_judge_individual="off"
 _arg_judge_together="on"
 _arg_parallel="on"
+_arg_combine_with_individual_judgement="off"
+_arg_combine_with_comparative_judgement="off"
 # NESTED
-_verbose_level="0";
+_verbose_level="0"
 
-
-
-print_help()
-{
-	_triggerSCHelp=1;
+print_help() {
+	_triggerSCHelp=1
 
 	if [[ "$_helpHasBeenPrinted" == "1" ]]; then
-		_helpHasBeenPrinted=0;
+		_helpHasBeenPrinted=0
 		echo -e "Race several models, then judge and combine the outputs:"
-	echo -e "	prompt: your prompt"
-	echo -e "	-m, --model <model>: provider:model-id format, repeatable"
-	echo -e "	-j, --judge-model <judge-model>: provider:model-id, model used to judge the result, forces --judge, repeatable"
-	echo -e "	--combine <combine>: provider:model-id, model used to combine responses"
-	echo -e "	--log-file <log-file>: save everything to log"
-	echo -e "	--judge|--no-judge: judge race result"
-	echo -e "	--judge-individual|--no-judge-individual: judge each response on its own"
-	echo -e "	--judge-together|--no-judge-together: judge all response together, on by default (use --no-judge-together to turn it off)"
-	echo -e "	--parallel|--sequential: execute task in parallel when  possible, on by default (use --sequential to turn it off)"
-	echo -e "Usage :
-	$0 <prompt> [--model <value>] [--judge-model <value>] [--combine <value>] [--log-file <value>] [--[no-]judge] [--[no-]judge-individual] [--[no-]judge-together] [--[no-]parallel]";
+		echo -e "	prompt: your prompt"
+		echo -e "	-m, --model <model>: provider:model-id format, repeatable"
+		echo -e "	-j, --judge-model <judge-model>: provider:model-id, model used to judge the result, forces --judge, repeatable"
+		echo -e "	--combine <combine>: provider:model-id, model used to combine responses"
+		echo -e "	--log-file <log-file>: save everything to log"
+		echo -e "	--judge|--no-judge: judge race result"
+		echo -e "	--judge-individual|--no-judge-individual: judge each response on its own"
+		echo -e "	--judge-together|--no-judge-together: judge all response together, on by default (use --no-judge-together to turn it off)"
+		echo -e "	--parallel|--sequential: execute task in parallel when  possible, on by default (use --sequential to turn it off)"
+		echo -e "	--combine-with-individual-judgement|--no-combine-with-individual-judgement: add individual judgement to the combining prompt
+		aliases: --comb-indiv, --combine-individual,"
+		echo -e "	--combine-with-comparative-judgement|--no-combine-with-comparative-judgement: add comparative judgement to combine prompt
+		aliases: --comb-comp, --combine-comparative,"
+		echo -e "Usage :
+	$0 <prompt> [--model <value>] [--judge-model <value>] [--combine <value>] [--log-file <value>] [--[no-]judge] [--[no-]judge-individual] [--[no-]judge-together] [--[no-]parallel] [--[no-]combine-with-individual-judgement] [--[no-]combine-with-comparative-judgement]"
 	fi
 
 }
 
 log() {
-	local _arg_msg="${1}";
-	local _arg_level="${2:-0}";
+	local _arg_msg="${1}"
+	local _arg_level="${2:-0}"
 	if [ "${_arg_level}" -le "${_verbose_level}" ]; then
 		case "$_arg_level" in
-			-3)
-				_arg_COLOR="\033[0;31m";
-				;;
-			-2)
-				_arg_COLOR="\033[0;33m";
-				;;
-			-1)
-				_arg_COLOR="\033[1;33m";
-				;;
-			1)
-				_arg_COLOR="\033[0;32m";
-				;;
-			2)
-				_arg_COLOR="\033[1;36m";
-				;;
-			3)
-				_arg_COLOR="\033[0;36m";
-				;;
-			*)
-				_arg_COLOR="\033[0m";
-				;;
+		-3)
+			_arg_COLOR="\033[0;31m"
+			;;
+		-2)
+			_arg_COLOR="\033[0;33m"
+			;;
+		-1)
+			_arg_COLOR="\033[1;33m"
+			;;
+		1)
+			_arg_COLOR="\033[0;32m"
+			;;
+		2)
+			_arg_COLOR="\033[1;36m"
+			;;
+		3)
+			_arg_COLOR="\033[0;36m"
+			;;
+		*)
+			_arg_COLOR="\033[0m"
+			;;
 		esac
 		if [ "${_has_colors}" == "1" ]; then
-			echo -e "${_arg_COLOR}${_arg_msg}\033[0m";
+			echo -e "${_arg_COLOR}${_arg_msg}\033[0m"
 		else
-			echo "${_arg_msg}";
+			echo "${_arg_msg}"
 		fi
 	fi
 }
 
-parse_commandline()
-{
+parse_commandline() {
 	_positionals_count=0
-	while test $# -gt 0
-	do
+	while test $# -gt 0; do
 		_key="$1"
 		case "$_key" in
-			-m|--model)
-				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-				_arg_model+=("$2")
+		-m | --model)
+			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+			_arg_model+=("$2")
+			shift
+			;;
+		--model=*)
+			_arg_model+=("${_key##--model=}")
+			;;
+		-m*)
+			_arg_model+=("${_key##-m}")
+			;;
+
+		-j | --judge-model)
+			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+			_arg_judge_model+=("$2")
+			shift
+			;;
+		--judge-model=*)
+			_arg_judge_model+=("${_key##--judge-model=}")
+			;;
+		-j*)
+			_arg_judge_model+=("${_key##-j}")
+			;;
+
+		--combine)
+			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+			_arg_combine="$2"
+			shift
+			;;
+		--combine=*)
+			_arg_combine="${_key##--combine=}"
+			;;
+
+		--log-file)
+			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+			_arg_log_file="$2"
+			shift
+			;;
+		--log-file=*)
+			_arg_log_file="${_key##--log-file=}"
+			;;
+
+		--judge)
+			_arg_judge="on"
+			;;
+		--no-judge)
+			_arg_judge="off"
+			;;
+		--judge-individual)
+			_arg_judge_individual="on"
+			;;
+		--no-judge-individual)
+			_arg_judge_individual="off"
+			;;
+		--judge-together)
+			_arg_judge_together="on"
+			;;
+		--no-judge-together)
+			_arg_judge_together="off"
+			;;
+		--parallel)
+			_arg_parallel="on"
+			;;
+		--sequential)
+			_arg_parallel="off"
+			;;
+		--combine-with-individual-judgement | --comb-indiv | --combine-individual)
+			_arg_combine_with_individual_judgement="on"
+			;;
+		--no-combine-with-individual-judgement)
+			_arg_combine_with_individual_judgement="off"
+			;;
+		--combine-with-comparative-judgement | --comb-comp | --combine-comparative)
+			_arg_combine_with_comparative_judgement="on"
+			;;
+		--no-combine-with-comparative-judgement)
+			_arg_combine_with_comparative_judgement="off"
+			;;
+		-h | --help)
+			print_help
+			exit 0
+			;;
+		-h*)
+			print_help
+			exit 0
+			;;
+		--verbose)
+			if [ $# -lt 2 ]; then
+				_verbose_level="$((_verbose_level + 1))"
+			else
+				_verbose_level="$2"
 				shift
-				;;
-			--model=*)
-				_arg_model+=("${_key##--model=}")
-				;;
-			-m*)
-				_arg_model+=("${_key##-m}")
-				;;
-			
-			-j|--judge-model)
-				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-				_arg_judge_model+=("$2")
+			fi
+			;;
+		--quiet)
+			if [ $# -lt 2 ]; then
+				_verbose_level="$((_verbose_level - 1))"
+			else
+				_verbose_level="-$2"
 				shift
-				;;
-			--judge-model=*)
-				_arg_judge_model+=("${_key##--judge-model=}")
-				;;
-			-j*)
-				_arg_judge_model+=("${_key##-j}")
-				;;
-			
-			--combine)
-				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-				_arg_combine="$2"
-				shift
-				;;
-			--combine=*)
-				_arg_combine="${_key##--combine=}"
-				;;
-			
-			--log-file)
-				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-				_arg_log_file="$2"
-				shift
-				;;
-			--log-file=*)
-				_arg_log_file="${_key##--log-file=}"
-				;;
-			
-			--judge)
-				_arg_judge="on"
-				;;
-			--no-judge)
-				_arg_judge="off"
-				;;
-			--judge-individual)
-				_arg_judge_individual="on"
-				;;
-			--no-judge-individual)
-				_arg_judge_individual="off"
-				;;
-			--judge-together)
-				_arg_judge_together="on"
-				;;
-			--no-judge-together)
-				_arg_judge_together="off"
-				;;
-			--parallel)
-				_arg_parallel="on"
-				;;
-			--sequential)
-				_arg_parallel="off"
-				;;
-			-h|--help)
-				print_help;
-				exit 0;
-				;;
-			-h*)
-				print_help;
-				exit 0;
-				;;
-			--verbose)
-					if [ $# -lt 2 ];then
-						_verbose_level="$((_verbose_level + 1))";
-					else
-						_verbose_level="$2";
-						shift;
-					fi
-					;;
-				--quiet)
-					if [ $# -lt 2 ];then
-						_verbose_level="$((_verbose_level - 1))";
-					else
-						_verbose_level="-$2";
-						shift;
-					fi
-					;;
-				
-				*)
-				_last_positional="$1"
-				_positionals+=("$_last_positional")
-				_positionals_count=$((_positionals_count + 1))
-				;;
+			fi
+			;;
+
+		*)
+			_last_positional="$1"
+			_positionals+=("$_last_positional")
+			_positionals_count=$((_positionals_count + 1))
+			;;
 		esac
 		shift
 	done
 }
 
-
-handle_passed_args_count()
-{
+handle_passed_args_count() {
 	local _required_args_string="prompt"
-	if [ "${_positionals_count}" -gt 1 ] && [ "$_helpHasBeenPrinted" == "1" ];then
+	if [ "${_positionals_count}" -gt 1 ] && [ "$_helpHasBeenPrinted" == "1" ]; then
 		_PRINT_HELP=yes die "FATAL ERROR: There were spurious positional arguments --- we expect at most 1 (namely: $_required_args_string), but got ${_positionals_count} (the last one was: '${_last_positional}').\n\t${_positionals[*]}" 1
 	fi
-	if [ "${_positionals_count}" -lt 1 ] && [ "$_helpHasBeenPrinted" == "1" ];then
+	if [ "${_positionals_count}" -lt 1 ] && [ "$_helpHasBeenPrinted" == "1" ]; then
 		_PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require at least 1 (namely: $_required_args_string), but got only ${_positionals_count}.
-	${_positionals[*]}" 1;
+	${_positionals[*]}" 1
 	fi
 }
 
-
-assign_positional_args()
-{
-	local _positional_name _shift_for=$1;
-	_positional_names="_arg_prompt ";
+assign_positional_args() {
+	local _positional_name _shift_for=$1
+	_positional_names="_arg_prompt "
 	shift "$_shift_for"
-	for _positional_name in ${_positional_names};do
-		test $# -gt 0 || break;
-		eval "if [ \"\$_one_of${_positional_name}\" != \"\" ];then [[ \"\${_one_of${_positional_name}[*]}\" =~ \"\${1}\" ]];fi" || die "${_positional_name} must be one of: $(eval "echo \"\${_one_of${_positional_name}[*]}\"")" 1;
-		eval "$_positional_name=\${1}" || die "Error during argument parsing, possibly an ParseArger bug." 1;
-		shift;
+	for _positional_name in ${_positional_names}; do
+		test $# -gt 0 || break
+		eval "if [ \"\$_one_of${_positional_name}\" != \"\" ];then [[ \"\${_one_of${_positional_name}[*]}\" =~ \"\${1}\" ]];fi" || die "${_positional_name} must be one of: $(eval "echo \"\${_one_of${_positional_name}[*]}\"")" 1
+		eval "$_positional_name=\${1}" || die "Error during argument parsing, possibly an ParseArger bug." 1
+		shift
 	done
 }
 
-print_debug()
-{
+print_debug() {
 	print_help
 	# shellcheck disable=SC2145
-	echo "DEBUG: $0 $@";
-	
-	echo -e "	prompt: ${_arg_prompt}";
-	echo -e "	model: ${_arg_model[*]}";
-	echo -e "	judge-model: ${_arg_judge_model[*]}";
-	echo -e "	combine: ${_arg_combine}";
-	echo -e "	log-file: ${_arg_log_file}";
-	echo -e "	judge: ${_arg_judge}";
-	echo -e "	judge-individual: ${_arg_judge_individual}";
-	echo -e "	judge-together: ${_arg_judge_together}";
-	echo -e "	parallel: ${_arg_parallel}";
+	echo "DEBUG: $0 $@"
+
+	echo -e "	prompt: ${_arg_prompt}"
+	echo -e "	model: ${_arg_model[*]}"
+	echo -e "	judge-model: ${_arg_judge_model[*]}"
+	echo -e "	combine: ${_arg_combine}"
+	echo -e "	log-file: ${_arg_log_file}"
+	echo -e "	judge: ${_arg_judge}"
+	echo -e "	judge-individual: ${_arg_judge_individual}"
+	echo -e "	judge-together: ${_arg_judge_together}"
+	echo -e "	parallel: ${_arg_parallel}"
+	echo -e "	combine-with-individual-judgement: ${_arg_combine_with_individual_judgement}"
+	echo -e "	combine-with-comparative-judgement: ${_arg_combine_with_comparative_judgement}"
 
 }
-
 
 on_interrupt() {
-	die Process aborted! 130;
+	die Process aborted! 130
 }
 
-
-parse_commandline "$@";
-handle_passed_args_count;
-assign_positional_args 1 "${_positionals[@]}";
-trap on_interrupt INT;
-
-
+parse_commandline "$@"
+handle_passed_args_count
+assign_positional_args 1 "${_positionals[@]}"
+trap on_interrupt INT
 
 # @parseArger-parsing-end
 # print_debug "$@"
@@ -299,24 +304,24 @@ source "$_SCRIPT_DIR/common"
 
 # Initialize log file if specified
 log_to_file() {
-    local message="$1"
-    if [ -n "$_arg_log_file" ]; then
-        echo "$message" >> "$_arg_log_file"
-    fi
+	local message="$1"
+	if [ -n "$_arg_log_file" ]; then
+		echo "$message" >>"$_arg_log_file"
+	fi
 }
 
 # Create markdown header in log file
 if [ -n "$_arg_log_file" ]; then
-    {
-        echo "# Race Results"
-        echo "## Prompt"
-        echo "\`\`\`"
-        echo "$_arg_prompt"
-        echo "\`\`\`"
-        echo "## Models"
-        printf "* %s\n" "${_arg_model[@]}"
-        echo "## Results"
-    } > "$_arg_log_file"
+	{
+		echo "# Race Results"
+		echo "## Prompt"
+		echo "\`\`\`"
+		echo "$_arg_prompt"
+		echo "\`\`\`"
+		echo "## Models"
+		printf "* %s\n" "${_arg_model[@]}"
+		echo "## Results"
+	} >"$_arg_log_file"
 fi
 
 # Create temp dir for responses
@@ -325,233 +330,275 @@ trap 'rm -rf "$tmp_dir"' EXIT
 
 # Function to run a single model
 run_model() {
-    local model="$1"
-    local output_file="$2"
-    local provider=""
-    local start_time
-    local first_token_time=""
-    local end_time
+	local model="$1"
+	local output_file="$2"
+	local provider=""
+	local start_time
+	local first_token_time=""
+	local end_time
 
-    # Extract provider if in format provider:model
-    if [[ "$model" == *":"* ]]; then
-        provider="${model%%:*}"
-        model="${model#*:}"
-    fi
+	# Extract provider if in format provider:model
+	if [[ "$model" == *":"* ]]; then
+		provider="${model%%:*}"
+		model="${model#*:}"
+	fi
 
-    # Run ask command and save output
-    echo "Running $model..."
-    start_time=$(date +%s.%N)
-    
-    # Run with stream to capture first token time
-    "$_SCRIPT_DIR/ask" "$_arg_prompt" --model "$model" --provider "$provider" --stream 2>/dev/null | {
-        while IFS= read -r line; do
-            if [ -z "$first_token_time" ]; then
-                first_token_time=$(date +%s.%N)
-                echo "$line" > "$output_file"
-            else
-                echo "$line" >> "$output_file"
-            fi
-        done
-        
-        end_time=$(date +%s.%N)
-        ttft=$(echo "$first_token_time - $start_time" | bc)
-        total_time=$(echo "$end_time - $start_time" | bc)
-        
-        # Log timing information
-        if [ -n "$_arg_log_file" ]; then
-            {
-                echo "### $model"
-                echo "* Time to first token: ${ttft}s"
-                echo "* Total response time: ${total_time}s"
-                echo "#### Response"
-                echo "\`\`\`"
-                cat "$output_file"
-                echo "\`\`\`"
-            } >> "$_arg_log_file"
-        fi
-    }
-    
-    return $?
+	# Run ask command and save output
+	echo "Running $model..."
+	start_time=$(date +%s.%N)
+
+	# Run with stream to capture first token time and count tokens
+	token_count=0
+	"$_SCRIPT_DIR/ask" "$_arg_prompt" --model "$model" --provider "$provider" --stream 2>/dev/null | {
+		while IFS= read -r line; do
+			if [ -z "$first_token_time" ]; then
+				first_token_time=$(date +%s.%N)
+				echo "$line" >"$output_file"
+			else
+				echo "$line" >>"$output_file"
+			fi
+			# Count words as rough token estimate
+			token_count=$((token_count + $(echo "$line" | wc -w)))
+		done
+
+		end_time=$(date +%s.%N)
+		ttft=$(echo "$first_token_time - $start_time" | bc)
+		total_time=$(echo "$end_time - $start_time" | bc)
+
+		# Log timing information
+		if [ -n "$_arg_log_file" ]; then
+			{
+				echo "### $model"
+				echo "* Time to first token: ${ttft}s"
+				echo "* Total response time: ${total_time}s"
+				echo "* Approximate token count: ${token_count}"
+				echo "#### Response"
+				echo "\`\`\`"
+				cat "$output_file"
+				echo "\`\`\`"
+			} >>"$_arg_log_file"
+		fi
+	}
+
+	return $?
 }
 
 # Run models
 declare -A responses
 
 if [ "$_arg_parallel" == "on" ]; then
-    declare -A pids
-    # Run models in parallel and store their PIDs
-    for model in "${_arg_model[@]}"; do
-        output_file="$tmp_dir/${model//\//_}"
-        run_model "$model" "$output_file" &
-        pids["$model"]=$!
-    done
+	declare -A pids
+	# Run models in parallel and store their PIDs
+	for model in "${_arg_model[@]}"; do
+		output_file="$tmp_dir/${model//\//_}"
+		run_model "$model" "$output_file" &
+		pids["$model"]=$!
+	done
 
-    # Wait for all processes and collect their outputs
-    for model in "${_arg_model[@]}"; do
-        output_file="$tmp_dir/${model//\//_}"
-        if wait "${pids[$model]}"; then
-            responses["$model"]="$output_file"
-        else
-            log "Error: Model $model failed" -2
-            log_to_file "### $model\nError: Model failed"
-            rm -f "$output_file"
-        fi
-    done
+	# Wait for all processes and collect their outputs
+	for model in "${_arg_model[@]}"; do
+		output_file="$tmp_dir/${model//\//_}"
+		if wait "${pids[$model]}"; then
+			responses["$model"]="$output_file"
+		else
+			log "Error: Model $model failed" -2
+			log_to_file "### $model\nError: Model failed"
+			rm -f "$output_file"
+		fi
+	done
 else
-    # Run models sequentially and collect outputs immediately
-    for model in "${_arg_model[@]}"; do
-        output_file="$tmp_dir/${model//\//_}"
-        if run_model "$model" "$output_file"; then
-            responses["$model"]="$output_file"
-        else
-            log "Error: Model $model failed" -2
-            log_to_file "### $model\nError: Model failed"
-            rm -f "$output_file"
-        fi
-    done
+	# Run models sequentially and collect outputs immediately
+	for model in "${_arg_model[@]}"; do
+		output_file="$tmp_dir/${model//\//_}"
+		if run_model "$model" "$output_file"; then
+			responses["$model"]="$output_file"
+		else
+			log "Error: Model $model failed" -2
+			log_to_file "### $model\nError: Model failed"
+			rm -f "$output_file"
+		fi
+	done
 fi
 
 # Only proceed if we have responses
 if [ ${#responses[@]} -eq 0 ]; then
-    die "No successful responses from any model" 1
+	die "No successful responses from any model" 1
 fi
 
-# Judge responses if requested
+# Store judgments only if needed for combination
+if [ -n "$_arg_combine" ] && [ "$_arg_combine_with_individual_judgement" == "on" ]; then
+	declare -A individual_judgments
+fi
+if [ -n "$_arg_combine" ] && [ "$_arg_combine_with_comparative_judgement" == "on" ]; then
+	declare -A comparative_judgments
+fi
+
 if [ "$_arg_judge" == "on" ] || [ "${#_arg_judge_model[@]}" -gt 0 ]; then
-    judge_system="You are a judge evaluating AI model responses to a prompt. Rate each response and explain your reasoning."
-    
-    if [ -n "$_arg_log_file" ]; then
-        echo -e "\n## Judgments" >> "$_arg_log_file"
-    fi
+	judge_system="You are a judge evaluating AI model responses to a prompt. Rate each response and explain your reasoning."
 
-    if [ "$_arg_judge_individual" == "on" ]; then
-        # Judge each response individually
-        if [ -n "$_arg_log_file" ]; then
-            echo -e "\n### Individual Judgments" >> "$_arg_log_file"
-        fi
-        
-        for model in "${!responses[@]}"; do
-            response_file="${responses[$model]}"
-            response=$(<"$response_file")
-            judge_prompt="Prompt: $_arg_prompt\n\nResponse from $model:\n$response\n\nPlease evaluate this response."
+	if [ -n "$_arg_log_file" ]; then
+		echo -e "\n## Judgments" >>"$_arg_log_file"
+	fi
 
-            for judge_model in "${_arg_judge_model[@]}"; do
-                provider=""
-                if [[ "$judge_model" == *":"* ]]; then
-                    provider="${judge_model%%:*}"
-                    judge_model="${judge_model#*:}"
-                fi
+	if [ "$_arg_judge_individual" == "on" ]; then
+		# Judge each response individually
+		if [ -n "$_arg_log_file" ]; then
+			echo -e "\n### Individual Judgments" >>"$_arg_log_file"
+		fi
 
-                echo -e "\nJudgment for $model by $judge_model:"
-                
-                start_time=$(date +%s.%N)
-                judgment=$("$_SCRIPT_DIR/ask" "$judge_prompt" --model "$judge_model" --provider "$provider" --system "$judge_system")
-                end_time=$(date +%s.%N)
-                total_time=$(echo "$end_time - $start_time" | bc)
-                
-                echo "$judgment"
-                
-                if [ -n "$_arg_log_file" ]; then
-                    {
-                        echo -e "\n#### $model (by $judge_model)"
-                        echo "* Judgment time: ${total_time}s"
-                        echo "\`\`\`"
-                        echo "$judgment"
-                        echo "\`\`\`"
-                    } >> "$_arg_log_file"
-                fi
-            done
-        done
-    fi
+		for model in "${!responses[@]}"; do
+			response_file="${responses[$model]}"
+			response=$(<"$response_file")
+			judge_prompt="Prompt: $_arg_prompt\n\nResponse from $model:\n$response\n\nPlease evaluate this response."
 
-    if [ "$_arg_judge_together" == "on" ]; then
-        # Judge all responses together
-        if [ -n "$_arg_log_file" ]; then
-            echo -e "\n### Comparative Judgment" >> "$_arg_log_file"
-        fi
-        
-        judge_prompt="Prompt: $_arg_prompt\n\nResponses:\n"
-        for model in "${!responses[@]}"; do
-            response_file="${responses[$model]}"
-            response=$(<"$response_file")
-            judge_prompt+="\n$model:\n$response\n"
-        done
-        judge_prompt+="\nPlease compare and evaluate these responses."
+			for judge_model in "${_arg_judge_model[@]}"; do
+				provider=""
+				if [[ "$judge_model" == *":"* ]]; then
+					provider="${judge_model%%:*}"
+					judge_model="${judge_model#*:}"
+				fi
 
-        for judge_model in "${_arg_judge_model[@]}"; do
-            provider=""
-            if [[ "$judge_model" == *":"* ]]; then
-                provider="${judge_model%%:*}"
-                judge_model="${judge_model#*:}"
-            fi
+				echo -e "\nJudgment for $model by $judge_model:"
 
-            echo -e "\nComparative judgment by $judge_model:"
-            
-            start_time=$(date +%s.%N)
-            judgment=$("$_SCRIPT_DIR/ask" "$judge_prompt" --model "$judge_model" --provider "$provider" --system "$judge_system")
-            end_time=$(date +%s.%N)
-            total_time=$(echo "$end_time - $start_time" | bc)
-            
-            echo "$judgment"
-            
-            if [ -n "$_arg_log_file" ]; then
-                {
-                    echo -e "\n#### By $judge_model"
-                    echo "* Judgment time: ${total_time}s"
-                    echo "\`\`\`"
-                    echo "$judgment"
-                    echo "\`\`\`"
-                } >> "$_arg_log_file"
-            fi
-        done
-    fi
+				start_time=$(date +%s.%N)
+				judgment=$("$_SCRIPT_DIR/ask" "$judge_prompt" --model "$judge_model" --provider "$provider" --system "$judge_system")
+				end_time=$(date +%s.%N)
+				total_time=$(echo "$end_time - $start_time" | bc)
+
+				# Store judgment only if needed for combination
+				if [ -n "$_arg_combine" ] && [ "$_arg_combine_with_individual_judgement" == "on" ]; then
+					individual_judgments["${model}_${judge_model}"]="$judgment"
+				fi
+
+				echo "$judgment"
+
+				if [ -n "$_arg_log_file" ]; then
+					{
+						echo -e "\n#### $model (by $judge_model)"
+						echo "* Judgment time: ${total_time}s"
+						echo "\`\`\`"
+						echo "$judgment"
+						echo "\`\`\`"
+					} >>"$_arg_log_file"
+				fi
+			done
+		done
+	fi
+
+	if [ "$_arg_judge_together" == "on" ]; then
+		# Judge all responses together
+		if [ -n "$_arg_log_file" ]; then
+			echo -e "\n### Comparative Judgment" >>"$_arg_log_file"
+		fi
+
+		judge_prompt="Prompt: $_arg_prompt\n\nResponses:\n"
+		for model in "${!responses[@]}"; do
+			response_file="${responses[$model]}"
+			response=$(<"$response_file")
+			judge_prompt+="\n$model:\n$response\n"
+		done
+		judge_prompt+="\nPlease compare and evaluate these responses."
+
+		for judge_model in "${_arg_judge_model[@]}"; do
+			provider=""
+			if [[ "$judge_model" == *":"* ]]; then
+				provider="${judge_model%%:*}"
+				judge_model="${judge_model#*:}"
+			fi
+
+			echo -e "\nComparative judgment by $judge_model:"
+
+			start_time=$(date +%s.%N)
+			judgment=$("$_SCRIPT_DIR/ask" "$judge_prompt" --model "$judge_model" --provider "$provider" --system "$judge_system")
+			end_time=$(date +%s.%N)
+			total_time=$(echo "$end_time - $start_time" | bc)
+
+			# Store comparative judgment only if needed for combination
+			if [ -n "$_arg_combine" ] && [ "$_arg_combine_with_comparative_judgement" == "on" ]; then
+				comparative_judgments["$judge_model"]="$judgment"
+			fi
+
+			echo "$judgment"
+
+			if [ -n "$_arg_log_file" ]; then
+				{
+					echo -e "\n#### By $judge_model"
+					echo "* Judgment time: ${total_time}s"
+					echo "\`\`\`"
+					echo "$judgment"
+					echo "\`\`\`"
+				} >>"$_arg_log_file"
+			fi
+		done
+	fi
 fi
 
 # Combine responses if requested
 if [ -n "$_arg_combine" ]; then
-    if [ -n "$_arg_log_file" ]; then
-        echo -e "\n## Combined Response" >> "$_arg_log_file"
-    fi
-    
-    combine_system="You are tasked with combining multiple AI responses into a single coherent response that takes the best elements from each."
-    combine_prompt="Original prompt: $_arg_prompt\n\nResponses to combine:\n"
+	if [ -n "$_arg_log_file" ]; then
+		echo -e "\n## Combined Response" >>"$_arg_log_file"
+	fi
 
-    for model in "${!responses[@]}"; do
-        response_file="${responses[$model]}"
-        response=$(<"$response_file")
-        combine_prompt+="\n$model:\n$response\n"
-    done
-    combine_prompt+="\nPlease combine these responses into a single coherent response."
+	combine_system="You are tasked with combining multiple AI responses into a single coherent response that takes the best elements from each."
+	combine_prompt="Original prompt: $_arg_prompt\n\nResponses to combine:\n"
 
-    provider=""
-    combine_model="$_arg_combine"
-    if [[ "$combine_model" == *":"* ]]; then
-        provider="${combine_model%%:*}"
-        combine_model="${combine_model#*:}"
-    fi
+	for model in "${!responses[@]}"; do
+		response_file="${responses[$model]}"
+		response=$(<"$response_file")
+		combine_prompt+="\n$model:\n$response\n"
 
-    echo -e "\nCombined response by $combine_model:"
-    
-    start_time=$(date +%s.%N)
-    combined=$("$_SCRIPT_DIR/ask" "$combine_prompt" --model "$combine_model" --provider "$provider" --system "$combine_system")
-    end_time=$(date +%s.%N)
-    total_time=$(echo "$end_time - $start_time" | bc)
-    
-    echo "$combined"
-    
-    if [ -n "$_arg_log_file" ]; then
-        {
-            echo "* Combination time: ${total_time}s"
-            echo "\`\`\`"
-            echo "$combined"
-            echo "\`\`\`"
-        } >> "$_arg_log_file"
-    fi
+		# Add individual judgments if requested
+		if [ "$_arg_combine_with_individual_judgement" == "on" ]; then
+			combine_prompt+="\nJudgments for this response:\n"
+			for judge_model in "${_arg_judge_model[@]}"; do
+				judgment="${individual_judgments["${model}_${judge_model}"]}"
+				if [ -n "$judgment" ]; then
+					combine_prompt+="\nBy $judge_model:\n$judgment\n"
+				fi
+			done
+		fi
+	done
+
+	# Add comparative judgments if requested
+	if [ "$_arg_combine_with_comparative_judgement" == "on" ]; then
+		combine_prompt+="\n\nComparative Judgments:\n"
+		for judge_model in "${!comparative_judgments[@]}"; do
+			judgment="${comparative_judgments["$judge_model"]}"
+			combine_prompt+="\nBy $judge_model:\n$judgment\n"
+		done
+	fi
+
+	combine_prompt+="\nPlease combine these responses into a single coherent response, taking into account any provided judgments."
+
+	provider=""
+	combine_model="$_arg_combine"
+	if [[ "$combine_model" == *":"* ]]; then
+		provider="${combine_model%%:*}"
+		combine_model="${combine_model#*:}"
+	fi
+
+	echo -e "\nCombined response by $combine_model:"
+
+	start_time=$(date +%s.%N)
+	combined=$("$_SCRIPT_DIR/ask" "$combine_prompt" --model "$combine_model" --provider "$provider" --system "$combine_system")
+	end_time=$(date +%s.%N)
+	total_time=$(echo "$end_time - $start_time" | bc)
+
+	echo "$combined"
+
+	if [ -n "$_arg_log_file" ]; then
+		{
+			echo "* Combination time: ${total_time}s"
+			echo "\`\`\`"
+			echo "$combined"
+			echo "\`\`\`"
+		} >>"$_arg_log_file"
+	fi
 else
-    # If not combining, just output all responses
-    for model in "${!responses[@]}"; do
-        response_file="${responses[$model]}"
-        echo -e "\nResponse from $model:"
-        cat "$response_file"
-    done
+	# If not combining, just output all responses
+	for model in "${!responses[@]}"; do
+		response_file="${responses[$model]}"
+		echo -e "\nResponse from $model:"
+		cat "$response_file"
+	done
 fi
