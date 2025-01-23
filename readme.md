@@ -222,6 +222,14 @@ tasks:
 			...
 ```
 
-```bash
+```markdown
 You > #/task fresh_context list all the modified files;
+```
+
+add this to the system prompt :
+
+```markdown
+Create a detailed and effective system prompt based on the provided conversation history as to continue it.
+[remaining of the prompt]
+list all the modified files
 ```
