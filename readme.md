@@ -1,4 +1,3 @@
-
 ## AI-gents.
 
 A simple format for AI agents.
@@ -40,7 +39,9 @@ I had to test the thing, I write bash.... meh, I'm gonna write meself a bash cha
 
 Well, you too can use it (at your own expense !)
 
-### ai
+### Usage
+
+#### ai
 
 ask or chat with an ai, from your terminal, create and chat with agents too:
 
@@ -63,10 +64,11 @@ ask or chat with an ai, from your terminal, create and chat with agents too:
   ai agent chat Maurice "how is the baguette going ?"
 ```
 
-### ai ask
+#### ai ask
+
+ask something to an AI:
 
 ```bash
-ask something to an AI:
 	prompt: what to ask
 	--api <api>: api url
 	--api-key <api-key>: api key
@@ -79,10 +81,11 @@ ask something to an AI:
 	ai ask <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--[no-]stream]
 ```
 
-### ai chat
+#### ai chat
+
+Chat with an AI:
 
 ```bash
-Chat with an AI:
 	prompt: what to ask
 	--api <api>: api url
 	--api-key <api-key>: api key
@@ -99,7 +102,7 @@ Chat with an AI:
 	ai chat <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--user <value>] [--ai-name <value>] [--title <value>] [--log-file <value>] [--[no-]log]
 ```
 
-### ai agent
+#### ai agent
 
 work with an AI agent:
 
@@ -170,4 +173,55 @@ list existing agent:
 ```bash
 # Usage :
 	ai agent list
+```
+
+### Execute command in a chat
+
+You can execute a bash command in your chat prompt to do so use `#!/<your command> ["and its argument" --or "even the options" ]`.
+
+This will replace the call with the result of your command.
+
+In this project directory as an example :
+
+```bash
+You > could you tell me wich of those files you would need to get more context ?\n#!/tree -I 'node_modules|cache|test_*'
+
+# outputs
+could you tell me wich of those files you would need to get more context ?
+.
+├── agent.yml
+├── ai
+├── chat
+├── generic_agent.yml
+├── readme.md
+└── src
+    └── bash
+        ├── _agent
+        │   ├── ask
+        │   ├── chat
+        │   ├── create
+        │   └── list
+        ├── agent
+        ├── ask
+        ├── chat
+        ├── common
+```
+
+### Agent tasks
+
+Agent can come with tasks which are additional system prompt instructions.
+
+using the agent.yml file as an example :
+
+```yaml
+tasks:
+  fresh_context:
+    description: "get the agent to craft a fresh context"
+    prompt: |
+      Create a detailed and effective system prompt based on the provided conversation history as to continue it.
+			...
+```
+
+```bash
+You > #/task fresh_context list all the modified files;
 ```

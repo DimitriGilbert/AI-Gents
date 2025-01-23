@@ -83,6 +83,20 @@ handle_agent_command() {
   local agent_file
   agent_file="$(get_agent_file "$agent")" || die "Could not find agent: $agent" 1
 
+  # Process any tasks in the prompt
+  local task_prompt
+  task_prompt="$(parse_for_tasks "$prompt" "$agent_file")"
+  if [ "$task_prompt" != "" ]; then
+    # Add task prompts to system prompt
+    if [ "$system" != "" ]; then
+      system="$system"$'\n\n'"$task_prompt"
+    else
+      system="$task_prompt"
+    fi
+    # Remove task strings from prompt
+    prompt="$(remove_task_from_prompt "$prompt")"
+  fi
+
   # Get values from agent config for any parameter not provided by user
   if [ "$provider" = "" ]; then
     provider="$(yq -r '.model.provider' "$agent_file")"
@@ -164,4 +178,49 @@ $system"
   "${cmd[@]}"
 }
 
+parse_for_tasks() {
+  local prompt="$1"
+  local agent_file="$2"
 
+  local task_prompt=""
+  prompt_copy="$prompt"
+
+  while [[ "$prompt_copy" == *"#/task"* ]]; do
+    # Found #/task, get everything until ;
+    task_part=${prompt_copy#*"#/task"}
+    task_part=${task_part%%;*}
+    task_part=${task_part#"${task_part%%[![:space:]]*}"}  # trim leading space
+    # Get first word as task name, rest as user prompt
+    read -r task_name user_prompt <<< "$task_part"
+    
+    # Get task prompt from agent file
+    task_def="$(echo "$agent_file" | yq -r ".tasks.$task_name.prompt")"
+    if [ "$task_def" != "null" ]; then
+      task_prompt+="$task_def"$'\n'
+      if [ "$user_prompt" != "" ]; then
+        task_prompt+=$'\n'"$user_prompt"$'\n'
+      fi
+    fi
+    
+    # Remove this task and continue searching
+    prompt_copy=${prompt_copy#*";"}
+  done
+  
+  echo -e "$task_prompt"
+}
+
+remove_task_from_prompt() {
+  local prompt="$1"
+  prompt_copy="$prompt"
+  
+  while [[ "$prompt_copy" == *"#/task"* ]]; do
+    # Get everything before #/task
+    before_task=${prompt_copy%%"#/task"*}
+    # Get everything after the semicolon
+    after_task=${prompt_copy#*";"}
+    # Combine them
+    prompt_copy="$before_task$after_task"
+  done
+  
+  echo "$prompt_copy"
+}

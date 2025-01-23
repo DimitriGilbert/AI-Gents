@@ -305,16 +305,22 @@ done
 if [ "${#_arg_prompt_cmds[@]}" -gt 0 ]; then
 	# for each line, fill an array with each command and its arguments
 	for i in "${!_arg_prompt_cmds[@]}"; do
-		cmd="${_arg_prompt_cmds[$i]}"
 		match="${matches[$i]}"
 		# split the command into an array
-		read -ra _tmpCmd <<<"$cmd"
+		read -ra _tmpCmd <<<"${_arg_prompt_cmds[$i]}"
 		# execute the command and get its output
 		to_put_in_arg_prompt="$("${_tmpCmd[@]}" 2>&1)"
-		# replace the match with the output of the command
-		_arg_prompt="${_arg_prompt//$match/$to_put_in_arg_prompt}"
+
+		if [ $? -ne 0 ]; then
+			log "\nCommand failed: ${_tmpCmd[*]}\n$to_put_in_arg_prompt\n" -2
+		else
+			# replace the match with the output of the command
+			_arg_prompt="${_arg_prompt//$match/$to_put_in_arg_prompt}"
+		fi
 	done
 fi
+
+# die "$_arg_prompt" 0
 
 # Create the JSON payload using jq to handle all escaping
 if [ "$_arg_conversation" != "" ]; then
