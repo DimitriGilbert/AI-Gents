@@ -117,6 +117,19 @@ handle_agent_command() {
     model="$(yq -r '.model.name' "$agent_file")"
   fi
   
+  # Get model configuration parameters
+  local temperature max_tokens top_p frequency_penalty presence_penalty stop seed logit_bias response_format structured_outputs
+  temperature="$(yq -r '.model.temperature // ""' "$agent_file")"
+  max_tokens="$(yq -r '.model.max_tokens // ""' "$agent_file")"
+  top_p="$(yq -r '.model.top_p // ""' "$agent_file")"
+  frequency_penalty="$(yq -r '.model.frequency_penalty // ""' "$agent_file")"
+  presence_penalty="$(yq -r '.model.presence_penalty // ""' "$agent_file")"
+  stop="$(yq -r '.model.stop // ""' "$agent_file")"
+  seed="$(yq -r '.model.seed // ""' "$agent_file")"
+  logit_bias="$(yq -r '.model.logit_bias // ""' "$agent_file")"
+  response_format="$(yq -r '.model.response_format // ""' "$agent_file")"
+  structured_outputs="$(yq -r '.model.structured_outputs // ""' "$agent_file")"
+
   # Get API key from credentials if not provided
   if [ "$api_key" = "" ] && [ "$provider" != "" ]; then
     api_key="$(get_provider_credential "$provider")"
@@ -187,6 +200,18 @@ $system"
   if [ "$provider" != "" ]; then
     cmd+=(--provider "$provider")
   fi
+
+  # Add model configuration parameters if they exist
+  [ -n "$temperature" ] && cmd+=(--temperature "$temperature")
+  [ -n "$max_tokens" ] && cmd+=(--max_tokens "$max_tokens")
+  [ -n "$top_p" ] && cmd+=(--top_p "$top_p")
+  [ -n "$frequency_penalty" ] && cmd+=(--frequency_penalty "$frequency_penalty")
+  [ -n "$presence_penalty" ] && cmd+=(--presence_penalty "$presence_penalty")
+  [ -n "$stop" ] && cmd+=(--stop "$stop")
+  [ -n "$seed" ] && cmd+=(--seed "$seed")
+  [ -n "$logit_bias" ] && cmd+=(--logit_bias "$logit_bias")
+  [ -n "$response_format" ] && cmd+=(--response_format "$response_format")
+  [ -n "$structured_outputs" ] && cmd+=(--structured_outputs "$structured_outputs")
 
   # Add any additional arguments passed to the function
   cmd+=("$@")
