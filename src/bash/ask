@@ -495,9 +495,9 @@ _arg_prompt_cmds=()
 matches=()
 prompt_copy="$_arg_prompt"
 while [[ "$prompt_copy" =~ \#\!/([^;]+)\; ]]; do
-	cmd="${BASH_REMATCH[1]}"
+	pcmd="${BASH_REMATCH[1]}"
 	matches+=("${BASH_REMATCH[0]}")
-	_arg_prompt_cmds+=("$cmd")
+	_arg_prompt_cmds+=("$pcmd")
 	prompt_copy="${prompt_copy//"${BASH_REMATCH[0]}"/ }"
 done
 
@@ -623,12 +623,13 @@ if [ "$_arg_stream" == "on" ]; then
 					die "API Error: $error_msg" -2
 				fi
 				# Extract content directly between "content":"..." without jq
-				if [[ "$resp_line" =~ \"content\":\"([^\"]*)\" ]]; then
+				if [[ "$resp_line" =~ \"content\":\"(.*)\"(,|\}) ]]; then
 					content="${BASH_REMATCH[1]}"
-					printf '%b' "${content//\\\"/\"}" >>"$tmp_response"
+					content="${content//\\\"/\"}"
+					printf '%b' "$content" >>"$tmp_response"
 					content="${content//<think>/\\e[38;5;4m}"
 					content="${content//<\/think>/\\e[0m}"
-					printf '%b' "${content//\\\"/\"}"
+					printf '%b' "$content"
 				fi
 			fi
 		fi
@@ -659,10 +660,9 @@ else
 
 	if [ -n "$response" ]; then
 		# Extract content without using jq
-		if [[ "$response" =~ \"content\":\"([^\"]*)\" ]]; then
+		if [[ "$response" =~ \"content\":\"([^\"]+)\" ]]; then
 			content="${BASH_REMATCH[1]}"
-			# Print the content
-			printf '%b\n' "${content//\\\"/\"}"
+			printf '%s' "$content"
 		fi
 	fi
 fi
