@@ -449,7 +449,8 @@ if [ "$_arg_judge" == "on" ] || [ "${#_arg_judge_model[@]}" -gt 0 ]; then
 		for model in "${!responses[@]}"; do
 			response_file="${responses[$model]}"
 			response=$(<"$response_file")
-			judge_prompt="Prompt: $_arg_prompt\n\nResponse from $model:\n$response\n\nPlease evaluate this response."
+			# do not include model name to avoid bias
+			judge_prompt="Prompt: $_arg_prompt\n\nResponse:\n$response\n\nPlease evaluate this response."
 
 			for judge_model in "${_arg_judge_model[@]}"; do
 				provider=""
@@ -492,12 +493,16 @@ if [ "$_arg_judge" == "on" ] || [ "${#_arg_judge_model[@]}" -gt 0 ]; then
 		fi
 
 		judge_prompt="Prompt: $_arg_prompt\n\nResponses:\n"
+		i=1
 		for model in "${!responses[@]}"; do
 			response_file="${responses[$model]}"
 			response=$(<"$response_file")
-			judge_prompt+="\n$model:\n$response\n"
+			# Replace any mention of the model name in the response with "Model X"
+			response="${response//$model/Model $i}"
+			judge_prompt+="\nModel $i:\n$response\n"
+			((i++))
 		done
-		judge_prompt+="\nPlease compare and evaluate these responses."
+		judge_prompt+="\nPlease compare and evaluate these responses objectively, without any bias towards specific models."
 
 		for judge_model in "${_arg_judge_model[@]}"; do
 			provider=""
