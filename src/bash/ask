@@ -626,6 +626,8 @@ if [ "$_arg_stream" == "on" ]; then
 				if [[ "$resp_line" =~ \"content\":\"([^\"]*)\" ]]; then
 					content="${BASH_REMATCH[1]}"
 					printf '%b' "${content//\\\"/\"}" >>"$tmp_response"
+					content="${content//<think>/\\e[38;5;4m}"
+					content="${content//<\/think>/\\e[0m}"
 					printf '%b' "${content//\\\"/\"}"
 				fi
 			fi
