@@ -1,0 +1,328 @@
+#!/bin/bash
+# @parseArger-begin
+# @parseArger-help "install AI-Gents" --option "help" --short-option "h"
+# @parseArger-verbose --option "verbose" --level "0" --quiet-option "quiet"
+_has_colors=0
+if [ -t 1 ]; then # Check if stdout is a terminal
+	ncolors=$(tput colors 2>/dev/null)
+	if [ -n "$ncolors" ] && [ "$ncolors" -ge 8 ]; then
+		_has_colors=1
+	fi
+fi
+# @parseArger-declarations
+# @parseArger opt shell-rc-file "where to put the source directive" --short i --repeat --alias install-file
+# @parseArger opt default-provider "default provider" --short p
+# @parseArger opt credential "provider credential, <provider>:<credential>" --short c --repeat
+# @parseArger flag install-dependencies "install dependencies" --on --no-alias no-deps
+# @parseArger-declarations-end
+
+# @parseArger-utils
+_helpHasBeenPrinted=1
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# @parseArger-utils-end
+
+# @parseArger-parsing
+
+__cli_arg_count=$#
+
+die() {
+	local _ret=1
+	if [[ -n "$2" ]] && [[ "$2" =~ ^[0-9]+$ ]]; then
+		_ret="$2"
+	fi
+	test "${_PRINT_HELP:-no}" = yes && print_help >&2
+	log "$1" -3 >&2
+	exit "${_ret}"
+}
+
+begins_with_short_option() {
+	local first_option all_short_options=''
+	first_option="${1:0:1}"
+	test "$all_short_options" = "${all_short_options/$first_option/}" && return 1 || return 0
+}
+
+# POSITIONALS ARGUMENTS
+_positionals=()
+_optional_positionals=()
+# OPTIONALS ARGUMENTS
+_arg_shell_rc_file=()
+_arg_default_provider=
+_arg_credential=()
+# FLAGS
+_arg_install_dependencies="on"
+# NESTED
+_verbose_level="0"
+
+print_help() {
+	_triggerSCHelp=1
+
+	if [[ "$_helpHasBeenPrinted" == "1" ]]; then
+		_helpHasBeenPrinted=0
+		echo -e "install AI-Gents:"
+		echo -e "	-i, --shell-rc-file|--install-file <shell-rc-file>: where to put the source directive, repeatable"
+		echo -e "	-p, --default-provider <default-provider>: default provider"
+		echo -e "	-c, --credential <credential>: provider credential, <provider>:<credential>, repeatable"
+		echo -e "	--install-dependencies|--no-install-dependencies: install dependencies, on by default (use --no-install-dependencies to turn it off)
+		no-aliases: --no-deps,"
+		echo -e "Usage :
+	$0 [--shell-rc-file <value>] [--default-provider <value>] [--credential <value>] [--[no-]install-dependencies]"
+	fi
+
+}
+
+log() {
+	local _arg_msg="${1}"
+	local _arg_level="${2:-0}"
+	if [ "${_arg_level}" -le "${_verbose_level}" ]; then
+		case "$_arg_level" in
+		-3)
+			_arg_COLOR="\033[0;31m"
+			;;
+		-2)
+			_arg_COLOR="\033[0;33m"
+			;;
+		-1)
+			_arg_COLOR="\033[1;33m"
+			;;
+		1)
+			_arg_COLOR="\033[0;32m"
+			;;
+		2)
+			_arg_COLOR="\033[1;36m"
+			;;
+		3)
+			_arg_COLOR="\033[0;36m"
+			;;
+		*)
+			_arg_COLOR="\033[0m"
+			;;
+		esac
+		if [ "${_has_colors}" == "1" ]; then
+			echo -e "${_arg_COLOR}${_arg_msg}\033[0m"
+		else
+			echo "${_arg_msg}"
+		fi
+	fi
+}
+
+parse_commandline() {
+	_positionals_count=0
+	while test $# -gt 0; do
+		_key="$1"
+		case "$_key" in
+		-i | --install-file | --shell-rc-file)
+			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+			_arg_shell_rc_file+=("$2")
+			shift
+			;;
+		--shell-rc-file=*)
+			_arg_shell_rc_file+=("${_key##--shell-rc-file=}")
+			;;
+		--install-file=*)
+			_arg_shell_rc_file+=("${_key##--install-file=}")
+			;;
+		-i*)
+			_arg_shell_rc_file+=("${_key##-i}")
+			;;
+
+		-p | --default-provider)
+			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+			_arg_default_provider="$2"
+			shift
+			;;
+		--default-provider=*)
+			_arg_default_provider="${_key##--default-provider=}"
+			;;
+		-p*)
+			_arg_default_provider="${_key##-p}"
+			;;
+
+		-c | --credential)
+			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+			_arg_credential+=("$2")
+			shift
+			;;
+		--credential=*)
+			_arg_credential+=("${_key##--credential=}")
+			;;
+		-c*)
+			_arg_credential+=("${_key##-c}")
+			;;
+
+		--install-dependencies)
+			_arg_install_dependencies="on"
+			;;
+		--no-install-dependencies | --no-deps)
+			_arg_install_dependencies="off"
+			;;
+		-h | --help)
+			print_help
+			exit 0
+			;;
+		-h*)
+			print_help
+			exit 0
+			;;
+		--verbose)
+			if [ $# -lt 2 ]; then
+				_verbose_level="$((_verbose_level + 1))"
+			else
+				_verbose_level="$2"
+				shift
+			fi
+			;;
+		--quiet)
+			if [ $# -lt 2 ]; then
+				_verbose_level="$((_verbose_level - 1))"
+			else
+				_verbose_level="-$2"
+				shift
+			fi
+			;;
+
+		*)
+			_last_positional="$1"
+			_positionals+=("$_last_positional")
+			_positionals_count=$((_positionals_count + 1))
+			;;
+		esac
+		shift
+	done
+}
+
+handle_passed_args_count() {
+	local _required_args_string=""
+	if [ "${_positionals_count}" -gt 0 ] && [ "$_helpHasBeenPrinted" == "1" ]; then
+		_PRINT_HELP=yes die "FATAL ERROR: There were spurious positional arguments --- we expect at most 0 (namely: $_required_args_string), but got ${_positionals_count} (the last one was: '${_last_positional}').\n\t${_positionals[*]}" 1
+	fi
+	if [ "${_positionals_count}" -lt 0 ] && [ "$_helpHasBeenPrinted" == "1" ]; then
+		_PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require at least 0 (namely: $_required_args_string), but got only ${_positionals_count}.
+	${_positionals[*]}" 1
+	fi
+}
+
+assign_positional_args() {
+	local _positional_name _shift_for=$1
+	_positional_names=""
+	shift "$_shift_for"
+	for _positional_name in ${_positional_names}; do
+		test $# -gt 0 || break
+		eval "if [ \"\$_one_of${_positional_name}\" != \"\" ];then [[ \"\${_one_of${_positional_name}[*]}\" =~ \"\${1}\" ]];fi" || die "${_positional_name} must be one of: $(eval "echo \"\${_one_of${_positional_name}[*]}\"")" 1
+		eval "$_positional_name=\${1}" || die "Error during argument parsing, possibly an ParseArger bug." 1
+		shift
+	done
+}
+
+print_debug() {
+	print_help
+	# shellcheck disable=SC2145
+	echo "DEBUG: $0 $@"
+
+	echo -e "	shell-rc-file: ${_arg_shell_rc_file[*]}"
+	echo -e "	default-provider: ${_arg_default_provider}"
+	echo -e "	credential: ${_arg_credential[*]}"
+	echo -e "	install-dependencies: ${_arg_install_dependencies}"
+
+}
+
+on_interrupt() {
+	die Process aborted! 130
+}
+
+parse_commandline "$@"
+handle_passed_args_count
+assign_positional_args 1 "${_positionals[@]}"
+trap on_interrupt INT
+
+# @parseArger-parsing-end
+# print_debug "$@"
+# @parseArger-end
+
+_deps=(yq jq rlwrap)
+_to_install=()
+
+for dep in "${_deps[@]}"; do
+	if ! command -v "$dep" &>/dev/null; then
+		_to_install+=("$dep")
+	fi
+done
+
+if [ "${#_to_install[@]}" -gt 0 ]; then
+	if [ "${_arg_install_dependencies}" == "on" ]; then
+		log "Installing dependencies: ${_to_install[*]}" 1
+		# Detect package manager based on OS
+		if command -v dnf &>/dev/null; then
+			# Fedora/CentOS/RHEL
+			sudo dnf install -y "${_to_install[@]}"
+		elif command -v yum &>/dev/null; then
+			# Older RHEL/CentOS
+			sudo yum install -y "${_to_install[@]}"
+		elif command -v pacman &>/dev/null; then
+			# Arch/Manjaro
+			sudo pacman -S --noconfirm "${_to_install[@]}"
+		elif command -v apt &>/dev/null; then
+			# Debian/Ubuntu
+			sudo apt update
+			sudo apt install -y "${_to_install[@]}"
+		elif command -v zypper &>/dev/null; then
+			# openSUSE
+			sudo zypper install -y "${_to_install[@]}"
+		elif command -v brew &>/dev/null; then
+			# macOS
+			brew install "${_to_install[@]}"
+		elif command -v apk &>/dev/null; then
+			# Alpine Linux
+			sudo apk add "${_to_install[@]}"
+		else
+			echo "Unsupported package manager. Please install dependencies manually: ${_to_install[*]}"
+			exit 1
+		fi
+	else
+		log "Missing dependencies: ${_to_install[*]}" -1
+	fi
+fi
+
+_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+output="\n# AI-Gents\nexport AI_GENTS_DIR=\"$_dir\"
+source ${_dir}/AI-Gents.rc"
+
+for _file in "${_arg_shell_rc_file[@]}"; do
+	if [ -f "$_file" ]; then
+		if ! grep -q "AI-Gents" "$_file"; then
+			echo -e "$output" >>"$_file"
+			log "AI-Gents installed in $_file" 1
+		else
+			log "AI-Gents already installed in $_file" 1
+		fi
+	else
+		log "File $_file not found" -1
+	fi
+done
+
+# .rc
+if [ ! -f "${_dir}/AI-Gents.rc" ]; then
+	echo -e "alias AI-Gents=\"${_dir}/AI-Gents\"\n[ -f \"${_dir}/completely.bash\" ] && source \"${_dir}/completely.bash\";" >"${_dir}/AI-Gents.rc"
+fi
+
+# config
+source "$_dir/src/bash/common"
+
+if [ ! -d "$AI_USER_CONFIG_DIR" ]; then
+	mkdir -p "$AI_USER_CONFIG_DIR"
+fi
+
+if [ ! -f "$AI_USER_CONFIG_DIR/config" ] && [ -n "$_arg_default_provider" ]; then
+	echo -e "AI_DEFAULT_PROVIDER=\"$_arg_default_provider\"" >"$AI_USER_CONFIG_DIR/config"
+fi
+
+if [ ! -d "$AI_USER_CONFIG_DIR/credentials" ]; then
+	mkdir -p "$AI_USER_CONFIG_DIR/credentials"
+fi
+
+if [ "${#_arg_credential[@]}" -gt 0 ]; then
+	for credential in "${_arg_credential[@]}"; do
+		provider=$(echo "$credential" | cut -d ':' -f 1)
+		credential=$(echo "$credential" | cut -d ':' -f 2)
+		echo -e "$credential" >"$AI_USER_CONFIG_DIR/credentials/$provider"
+	done
+fi

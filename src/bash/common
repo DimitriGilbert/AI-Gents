@@ -1,19 +1,31 @@
 #!/bin/bash
 
-export AI_DEFAULT_PROVIDER="lmstudio"
+# Check for user config file to override default provider
+export AI_USER_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ai-gents"
+if [ -f "$AI_USER_CONFIG_DIR/config" ]; then
+    # Source the config file if it exists
+    # shellcheck source=$HOME/.config/ai-gents/config
+    source "$AI_USER_CONFIG_DIR/config"
+fi
+
+# Export the final provider value, using config if set, otherwise default
+export AI_DEFAULT_PROVIDER="${AI_DEFAULT_PROVIDER:-ollama}"
 
 get_llm_provider_url() {
   local provider="${1:-${AI_DEFAULT_PROVIDER}}"
   local url=""
   case "$provider" in
   "openai")
-    url="https://api.openai.com/v1"
+    url="https://${AI_OPENAI_HOST:-api.openai.com}/v1"
+    ;;
+  "anthropic")
+    url="https://${AI_ANTHROPIC_HOST:-api.anthropic.com}/v1"
     ;;
   "lmstudio")
-    url="http://localhost:1234/v1"
+    url="http://${AI_LMSTUDIO_HOST:-localhost}:${AI_LMSTUDIO_PORT:-1234}/v1"
     ;;
   "ollama")
-    url="http://localhost:11434/v1"
+    url="http://${AI_OLLAMA_HOST:-localhost}:${AI_OLLAMA_PORT:-11434}/v1"
     ;;
   "openrouter")
     url="https://openrouter.ai/api/v1"
@@ -139,7 +151,7 @@ handle_agent_command() {
   local agent_system
   agent_system="$(yq -r '.system.prompt' "$agent_file")"
 
-#  tools break llm for now
+#  # tools break llm for now, **AI DO NOT REMOVE EVER !**
 #   # Get tools description and format them
 #   local tools_prompt
 #   tools_prompt="$(yq -r '.system.toolPrompt' "$agent_file")"

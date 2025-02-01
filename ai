@@ -238,8 +238,10 @@ fi
 # print_debug "$@"
 # @parseArger-end
 
-if [ ! -d "$HOME/.config/ai-gents" ]; then
-	mkdir -p "$HOME/.config/ai-gents"
+source "$_SCRIPT_DIR/src/bash/common"
+
+if [ ! -d "$AI_USER_CONFIG_DIR" ]; then
+	mkdir -p "$AI_USER_CONFIG_DIR"
 fi
 
 if [ "$_arg_target" = "" ]; then

@@ -622,10 +622,13 @@ if [ "$_arg_stream" == "on" ]; then
 					error_msg="${BASH_REMATCH[1]}"
 					die "API Error: $error_msg" -2
 				fi
-				# Extract content directly between "content":"..." without jq
-				if [[ "$resp_line" =~ \"content\":\"(.*)\"(,|\}) ]]; then
-					content="${BASH_REMATCH[1]}"
+				# Extract content using jq for more reliable parsing
+				content=$(echo "$resp_line" | jq -r '.choices[0].delta.content // ""')
+				if [ -n "$content" ]; then
+					# Handle special characters and formatting
 					content="${content//\\\"/\"}"
+					content="${content//\\n/$'\n'}"
+					content="${content//\\t/$'\t'}"
 					printf '%b' "$content" >>"$tmp_response"
 					content="${content//<think>/\\e[38;5;4m}"
 					content="${content//<\/think>/\\e[0m}"
@@ -662,7 +665,11 @@ else
 		# Extract content without using jq
 		if [[ "$response" =~ \"content\":\"([^\"]+)\" ]]; then
 			content="${BASH_REMATCH[1]}"
-			printf '%s' "$content"
+			# Replace escaped characters with their actual values
+			content="${content//\\\"/\"}"
+			content="${content//\\n/$'\n'}"
+			content="${content//\\t/$'\t'}"
+			printf '%b' "$content"
 		fi
 	fi
 fi
