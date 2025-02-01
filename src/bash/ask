@@ -617,7 +617,12 @@ curl_cmd=(curl -f -X POST "$_arg_api"
 if [ "$_arg_api_key" != "" ]; then
 	curl_cmd+=(-H "Authorization: Bearer $_arg_api_key")
 fi
-# die "${curl_cmd[*]}" 0
+
+# die "${curl_cmd[*]}\n\n$(cat "$tmp_payload")" 0
+
+# DEBUG
+# die "$(cat "$tmp_payload")" 0
+
 if [ "$_arg_stream" == "on" ]; then
 	curl_cmd+=(-N)
 	# Execute curl and process response
@@ -671,9 +676,9 @@ else
 	fi
 
 	if [ -n "$response" ]; then
-		# Extract content without using jq
-		if [[ "$response" =~ \"content\":\"([^\"]+)\" ]]; then
-			content="${BASH_REMATCH[1]}"
+		# Extract content using jq for more reliable parsing
+		content=$(echo "$response" | jq -r '.choices[0].message.content // ""')
+		if [ -n "$content" ]; then
 			# Replace escaped characters with their actual values
 			content="${content//\\\"/\"}"
 			content="${content//\\n/$'\n'}"

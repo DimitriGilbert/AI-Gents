@@ -88,7 +88,7 @@ get_agent_file() {
   local agent="$1"
   # First check if it's a file path
   if [ -f "$agent" ]; then
-    echo "$agent"
+    cat "$agent"
     return 0
   fi
 
@@ -97,7 +97,7 @@ get_agent_file() {
     local tmp_file
     tmp_file="$(TMPDIR="${TMPDIR:-/tmp}" mktemp </dev/null)" || return 1
     if curl -fsSL "$agent" -o "$tmp_file"; then
-      echo "$tmp_file"
+      cat "$tmp_file"
       return 0
     fi
     rm -f "$tmp_file"
@@ -107,7 +107,7 @@ get_agent_file() {
   # Finally check if it's an agent name
   local config_file="$HOME/.config/ai-gents/agents/${agent}.yml"
   if [ -f "$config_file" ]; then
-    echo "$config_file"
+    cat "$config_file"
     return 0
   fi
 
@@ -140,6 +140,7 @@ handle_agent_command() {
   # Process any tasks in the prompt
   local task_prompt
   task_prompt="$(parse_for_tasks "$prompt" "$agent_file")"
+  
   if [ "$task_prompt" != "" ]; then
     # Add task prompts to system prompt
     if [ "$system" != "" ]; then
@@ -153,24 +154,24 @@ handle_agent_command() {
 
   # Get values from agent config for any parameter not provided by user
   if [ "$provider" = "" ]; then
-    provider="$(yq -r '.model.provider' "$agent_file")"
+    provider="$(echo -e "$agent_file" | yq -r '.model.provider')"
   fi
   if [ "$model" = "" ]; then
-    model="$(yq -r '.model.name' "$agent_file")"
+    model="$(echo -e "$agent_file" | yq -r '.model.name')"
   fi
   
   # Get model configuration parameters
   local temperature max_tokens top_p frequency_penalty presence_penalty stop seed logit_bias response_format structured_outputs
-  temperature="$(yq -r '.model.temperature // ""' "$agent_file")"
-  max_tokens="$(yq -r '.model.max_tokens // ""' "$agent_file")"
-  top_p="$(yq -r '.model.top_p // ""' "$agent_file")"
-  frequency_penalty="$(yq -r '.model.frequency_penalty // ""' "$agent_file")"
-  presence_penalty="$(yq -r '.model.presence_penalty // ""' "$agent_file")"
-  stop="$(yq -r '.model.stop // ""' "$agent_file")"
-  seed="$(yq -r '.model.seed // ""' "$agent_file")"
-  logit_bias="$(yq -r '.model.logit_bias // ""' "$agent_file")"
-  response_format="$(yq -r '.model.response_format // ""' "$agent_file")"
-  structured_outputs="$(yq -r '.model.structured_outputs // ""' "$agent_file")"
+  temperature="$(echo -e "$agent_file" | yq -r '.model.temperature // ""')"
+  max_tokens="$(echo -e "$agent_file" | yq -r '.model.max_tokens // ""')"
+  top_p="$(echo -e "$agent_file" | yq -r '.model.top_p // ""')"
+  frequency_penalty="$(echo -e "$agent_file" | yq -r '.model.frequency_penalty // ""')"
+  presence_penalty="$(echo -e "$agent_file" | yq -r '.model.presence_penalty // ""')"
+  stop="$(echo -e "$agent_file" | yq -r '.model.stop // ""')"
+  seed="$(echo -e "$agent_file" | yq -r '.model.seed // ""')"
+  logit_bias="$(echo -e "$agent_file" | yq -r '.model.logit_bias // ""')"
+  response_format="$(echo -e "$agent_file" | yq -r '.model.response_format // ""')"
+  structured_outputs="$(echo -e "$agent_file" | yq -r '.model.structured_outputs // ""')"
 
   # Get API key from credentials if not provided
   if [ "$api_key" = "" ] && [ "$provider" != "" ]; then
@@ -179,7 +180,7 @@ handle_agent_command() {
 
   # Get agent system prompt and concatenate with user system if provided
   local agent_system
-  agent_system="$(yq -r '.system.prompt' "$agent_file")"
+  agent_system="$(echo -e "$agent_file" | yq -r '.system.prompt')"
 
 #  # tools break llm for now, **AI DO NOT REMOVE EVER !**
 #   # Get tools description and format them
@@ -218,9 +219,9 @@ $system"
   fi
 
   # Clean up temporary file if it was a URL
-  if [[ "$agent" =~ ^https?:// ]]; then
-    rm -f "$agent_file"
-  fi
+  # if [[ "$agent" =~ ^https?:// ]]; then
+  #   rm -f "$agent_file"
+  # fi
 
   # Build command with all provided arguments
   local cmd=("$cmd_name" "$prompt")
@@ -264,7 +265,7 @@ $system"
 
 parse_for_tasks() {
   local prompt="$1"
-  local agent_file="$2"
+  local agent_string="$2"
 
   local task_prompt=""
   prompt_copy="$prompt"
@@ -278,7 +279,7 @@ parse_for_tasks() {
     read -r task_name user_prompt <<< "$task_part"
     
     # Get task prompt from agent file
-    task_def="$(echo "$agent_file" | yq -r ".tasks.$task_name.prompt")"
+    task_def="$(echo "$agent_string" | yq -r ".tasks.$task_name.prompt")"
     if [ "$task_def" != "null" ]; then
       task_prompt+="$task_def"$'\n'
       if [ "$user_prompt" != "" ]; then
@@ -309,45 +310,67 @@ remove_task_from_prompt() {
   echo "$prompt_copy"
 }
 
-extract_code_blocks() {
+function extract_code_blocks() {
   local content="$1"
-  local language="$2"
+  local remove_language="${2:-0}"
+  local language="$3"
   local -a blocks=()
+  local inside_block=false
+  local current_block=""
+  local current_language=""
+  local block=""
+  local block_count=0
   
-  while true; do
-    # Find start of next code block
-    local start_pos=$(echo "$content" | grep -b -o '```' | head -1 | cut -d: -f1)
-    if [ -z "$start_pos" ]; then
-      break
-    fi
-    
-    # Remove everything before and including the first ```
-    content="${content:$((start_pos+3))}"
-    
-    # Find end of this code block
-    local end_pos=$(echo "$content" | grep -b -o '```' | head -1 | cut -d: -f1)
-    if [ -z "$end_pos" ]; then
-      break
-    fi
-    
-    # Extract the code block
-    local code_block="${content:0:$end_pos}"
-    
-    # Only include block if it matches the requested language
-    if [[ -n "$language" ]]; then
-      if [[ "$code_block" =~ ^[[:space:]]*$language([[:space:]]|$) ]]; then
-        code_block="${code_block#"${code_block%%[![:space:]]*}"}" # trim leading space
-        code_block="${code_block#$language}" # remove language
-        code_block="${code_block#"${code_block%%[![:space:]]*}"}" # trim leading space again
-        blocks+=("$code_block")
+  # Convert content to use temporary delimiter for processing
+  content="${content//$'\0'/_NULLBYTE_}"
+  
+  while IFS= read -r line || [ -n "$line" ]; do
+    if [[ "$line" =~ ^[[:space:]]*\`\`\`(.*) ]]; then
+      if [ "$inside_block" = false ]; then
+        # Start of code block
+        inside_block=true
+        current_language="${BASH_REMATCH[1]}"
+        current_block=""
+        block=""
+        ((block_count++))
+      else
+        # End of code block
+        inside_block=false
+        
+        # Join all lines of current block into single string
+        block="$current_block"
+        
+        # If language filter is specified, check if block matches
+        if [ -n "$language" ]; then
+          if [[ "$current_language" =~ ^[[:space:]]*$language([[:space:]]|$) ]]; then
+            if [ "$remove_language" = "1" ]; then
+              blocks+=("$block")
+            else
+              blocks+=("${current_language}"$'\n'"$block")
+            fi
+          fi
+        else
+          # No language filter, include all blocks
+          if [ "$remove_language" = "1" ]; then
+            blocks+=("$block")
+          else
+            blocks+=("${current_language}"$'\n'"$block")
+          fi
+        fi
       fi
-    else
-      blocks+=("$code_block")
+    elif [ "$inside_block" = true ]; then
+      # Inside a block, append the line
+      if [ -n "$current_block" ]; then
+        current_block+=$'\n'
+      fi
+      current_block+="$line"
     fi
+  done < <(printf '%s\n' "$content")
     
-    # Remove this code block and its closing backticks
-    content="${content:$((end_pos+3))}"
+  # Output blocks separated by null bytes with preserved internal newlines
+  for block in "${blocks[@]}"; do
+    # Restore original newlines and encode as temporary markers
+    block="${block//_NULLBYTE_/$'\n'}"
+    printf '%s\0' "$block"
   done
-
-  printf '%s\0' "${blocks[@]}"
 }
