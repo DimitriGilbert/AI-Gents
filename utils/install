@@ -284,7 +284,7 @@ fi
 
 _dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 output="\n# AI-Gents\nexport AI_GENTS_DIR=\"$_dir\"
-source ${_dir}/AI-Gents.rc"
+alias AI-Gents=\"${_dir}/AI-Gents\"\n[ -f \"${_dir}/completely.bash\" ] && source \"${_dir}/completely.bash\";"
 
 for _file in "${_arg_shell_rc_file[@]}"; do
 	if [ -f "$_file" ]; then

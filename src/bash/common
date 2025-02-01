@@ -41,6 +41,36 @@ get_llm_provider_url() {
   echo "${url}"
 }
 
+get_default_model() {
+  local provider="${1:-${AI_DEFAULT_PROVIDER}}"
+  local model=""
+  case "$provider" in
+  "openai")
+    model="${AI_OPENAI_MODEL:-gpt-4o-mini}"
+    ;;
+  "anthropic")
+    model="${AI_ANTHROPIC_MODEL:-claude-3-5-haiku}"
+    ;;
+  "lmstudio")
+    model="${AI_LMSTUDIO_MODEL:-llama-3.2-1b-instruct}"
+    ;;
+  "ollama")
+    model="${AI_OLLAMA_MODEL:-llama-3.2-1b-instruct}"
+    ;;
+  "openrouter")
+    model="${AI_OPENROUTER_MODEL:-"meta-llama/llama-3.2-1b-instruct:free"}"
+    ;;
+  "deepseek")
+    model="${AI_DEEPSEEK_MODEL:-deepseek-v3}"
+    ;;
+  *)
+    log "Unsupported provider: $provider" -3
+    return 1
+    ;;
+  esac
+  echo "${model}"
+}
+
 get_provider_credential() {
   local provider="${1:-${AI_DEFAULT_PROVIDER}}"
   local cred_file="$HOME/.config/ai-gents/credentials/${provider}"
@@ -277,4 +307,47 @@ remove_task_from_prompt() {
   done
   
   echo "$prompt_copy"
+}
+
+extract_code_blocks() {
+  local content="$1"
+  local language="$2"
+  local -a blocks=()
+  
+  while true; do
+    # Find start of next code block
+    local start_pos=$(echo "$content" | grep -b -o '```' | head -1 | cut -d: -f1)
+    if [ -z "$start_pos" ]; then
+      break
+    fi
+    
+    # Remove everything before and including the first ```
+    content="${content:$((start_pos+3))}"
+    
+    # Find end of this code block
+    local end_pos=$(echo "$content" | grep -b -o '```' | head -1 | cut -d: -f1)
+    if [ -z "$end_pos" ]; then
+      break
+    fi
+    
+    # Extract the code block
+    local code_block="${content:0:$end_pos}"
+    
+    # Only include block if it matches the requested language
+    if [[ -n "$language" ]]; then
+      if [[ "$code_block" =~ ^[[:space:]]*$language([[:space:]]|$) ]]; then
+        code_block="${code_block#"${code_block%%[![:space:]]*}"}" # trim leading space
+        code_block="${code_block#$language}" # remove language
+        code_block="${code_block#"${code_block%%[![:space:]]*}"}" # trim leading space again
+        blocks+=("$code_block")
+      fi
+    else
+      blocks+=("$code_block")
+    fi
+    
+    # Remove this code block and its closing backticks
+    content="${content:$((end_pos+3))}"
+  done
+
+  printf '%s\0' "${blocks[@]}"
 }

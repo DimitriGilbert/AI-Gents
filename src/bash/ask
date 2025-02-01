@@ -480,11 +480,19 @@ fi
 
 # Extract provider before creating payload
 if [ "$_arg_provider" = "" ]; then
-	if [[ "$_arg_model" == *":"* ]]; then
+	if [[ "$_arg_model" == *":"* && "$_arg_model" != *":free"* ]]; then
 		_arg_provider="${_arg_model%%:*}"
 		_arg_model="${_arg_model#*:}"
+	else
+		_arg_provider="$AI_DEFAULT_PROVIDER"
 	fi
 fi
+
+if [ "$_arg_model" = "" ]; then
+	_arg_model="$(get_default_model "$_arg_provider")"
+fi
+
+# die "$_arg_provider $_arg_model" 0
 
 if [ "$_arg_provider" != "" ]; then
 	_arg_api="$(get_llm_provider_url "$_arg_provider")/chat/completions"
@@ -605,10 +613,11 @@ fi
 curl_cmd=(curl -f -X POST "$_arg_api"
 	-H "Content-Type: application/json"
 	-d "@${tmp_payload}")
+
 if [ "$_arg_api_key" != "" ]; then
 	curl_cmd+=(-H "Authorization: Bearer $_arg_api_key")
 fi
-
+# die "${curl_cmd[*]}" 0
 if [ "$_arg_stream" == "on" ]; then
 	curl_cmd+=(-N)
 	# Execute curl and process response
