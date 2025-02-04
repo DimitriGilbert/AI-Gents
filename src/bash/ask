@@ -31,6 +31,7 @@ fi
 # @parseArger opt top_logprobs "top_logprobs param for http request"
 # @parseArger opt response_format "response_format param for http request"
 # @parseArger opt structured_outputs "structured_outputs param for http request"
+# @parseArger opt log "log file"
 # @parseArger flag stream "stream to stdout"
 # @parseArger-declarations-end
 
@@ -87,6 +88,7 @@ _arg_logprobs=
 _arg_top_logprobs=
 _arg_response_format=
 _arg_structured_outputs=
+_arg_log=
 # FLAGS
 _arg_stream="off"
 # NESTED
@@ -122,9 +124,10 @@ print_help()
 	echo -e "	--top_logprobs <top_logprobs>: top_logprobs param for http request"
 	echo -e "	--response_format <response_format>: response_format param for http request"
 	echo -e "	--structured_outputs <structured_outputs>: structured_outputs param for http request"
+	echo -e "	--log <log>: log file"
 	echo -e "	--stream|--no-stream: stream to stdout"
 	echo -e "Usage :
-	$0 <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--tools <value>] [--tool_choice <value>] [--max_tokens <value>] [--temperature <value>] [--top_p <value>] [--stop <value>] [--frequency_penalty <value>] [--presence_penalty <value>] [--seed <value>] [--logit_bias <value>] [--logprobs <value>] [--top_logprobs <value>] [--response_format <value>] [--structured_outputs <value>] [--[no-]stream]";
+	$0 <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--tools <value>] [--tool_choice <value>] [--max_tokens <value>] [--temperature <value>] [--top_p <value>] [--stop <value>] [--frequency_penalty <value>] [--presence_penalty <value>] [--seed <value>] [--logit_bias <value>] [--logprobs <value>] [--top_logprobs <value>] [--response_format <value>] [--structured_outputs <value>] [--log <value>] [--[no-]stream]";
 	fi
 
 }
@@ -351,6 +354,15 @@ parse_commandline()
 				_arg_structured_outputs="${_key##--structured_outputs=}"
 				;;
 			
+			--log)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_log="$2"
+				shift
+				;;
+			--log=*)
+				_arg_log="${_key##--log=}"
+				;;
+			
 			--stream)
 				_arg_stream="on"
 				;;
@@ -446,6 +458,7 @@ print_debug()
 	echo -e "	top_logprobs: ${_arg_top_logprobs}";
 	echo -e "	response_format: ${_arg_response_format}";
 	echo -e "	structured_outputs: ${_arg_structured_outputs}";
+	echo -e "	log: ${_arg_log}";
 	echo -e "	stream: ${_arg_stream}";
 
 }
@@ -623,6 +636,12 @@ fi
 # DEBUG
 # die "$(cat "$tmp_payload")" 0
 
+if [ "$_arg_log" != "" ]; then
+	echo -e "ai ask curl command:\n${curl_cmd[*]}" >> "$_arg_log"
+	echo -e "ai ask payload:\n$(cat "$tmp_payload")" >> "$_arg_log"
+	echo -e "ai ask response:\n" >> "$_arg_log"
+fi
+
 if [ "$_arg_stream" == "on" ]; then
 	curl_cmd+=(-N)
 	# Execute curl and process response
@@ -647,6 +666,9 @@ if [ "$_arg_stream" == "on" ]; then
 					content="${content//<think>/\\e[38;5;4m}"
 					content="${content//<\/think>/\\e[0m}"
 					printf '%b' "$content"
+					if [ "$_arg_log" != "" ]; then
+						printf '%b' "$content" >> "$_arg_log"
+					fi
 				fi
 			fi
 		fi
@@ -685,6 +707,9 @@ else
 			content="${content//\\t/$'\t'}"
 			printf '%b' "$content"
 			printf '\n'
+			if [ "$_arg_log" != "" ]; then
+				printf '%b' "$content" >> "$_arg_log"
+			fi
 		fi
 	fi
 fi

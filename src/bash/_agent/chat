@@ -22,6 +22,7 @@ fi
 # @parseArger opt ai-name "AI name" --default-value "AI"
 # @parseArger opt title "chat title, force log"
 # @parseArger opt log-file "log file for the chat"
+# @parseArger opt log "log file"
 # @parseArger flag log "log chat"
 # @parseArger-declarations-end
 
@@ -69,6 +70,7 @@ _arg_user="didi"
 _arg_ai_name="AI"
 _arg_title=
 _arg_log_file=
+_arg_log=
 # FLAGS
 _arg_log="off"
 # NESTED
@@ -95,9 +97,10 @@ print_help()
 	echo -e "	--ai-name <ai-name>: AI name [default: ' AI ']"
 	echo -e "	--title <title>: chat title, force log"
 	echo -e "	--log-file <log-file>: log file for the chat"
+	echo -e "	--log <log>: log file"
 	echo -e "	--log|--no-log: log chat"
 	echo -e "Usage :
-	$0 <agent> <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--user <value>] [--ai-name <value>] [--title <value>] [--log-file <value>] [--[no-]log]";
+	$0 <agent> <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--user <value>] [--ai-name <value>] [--title <value>] [--log-file <value>] [--log <value>] [--[no-]log]";
 	fi
 
 }
@@ -108,29 +111,29 @@ log() {
 	if [ "${_arg_level}" -le "${_verbose_level}" ]; then
 		case "$_arg_level" in
 			-3)
-				_arg_COLOR="[0;31m";
+				_arg_COLOR="\033[0;31m";
 				;;
 			-2)
-				_arg_COLOR="[0;33m";
+				_arg_COLOR="\033[0;33m";
 				;;
 			-1)
-				_arg_COLOR="[1;33m";
+				_arg_COLOR="\033[1;33m";
 				;;
 			1)
-				_arg_COLOR="[0;32m";
+				_arg_COLOR="\033[0;32m";
 				;;
 			2)
-				_arg_COLOR="[1;36m";
+				_arg_COLOR="\033[1;36m";
 				;;
 			3)
-				_arg_COLOR="[0;36m";
+				_arg_COLOR="\033[0;36m";
 				;;
 			*)
-				_arg_COLOR="[0m";
+				_arg_COLOR="\033[0m";
 				;;
 		esac
 		if [ "${_has_colors}" == "1" ]; then
-			echo -e "${_arg_COLOR}${_arg_msg}[0m";
+			echo -e "${_arg_COLOR}${_arg_msg}\033[0m";
 		else
 			echo "${_arg_msg}";
 		fi
@@ -235,6 +238,15 @@ parse_commandline()
 				;;
 			
 			--log)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_log="$2"
+				shift
+				;;
+			--log=*)
+				_arg_log="${_key##--log=}"
+				;;
+			
+			--log)
 				_arg_log="on"
 				;;
 			--no-log)
@@ -280,8 +292,7 @@ handle_passed_args_count()
 {
 	local _required_args_string="agent prompt"
 	if [ "${_positionals_count}" -gt 2 ] && [ "$_helpHasBeenPrinted" == "1" ];then
-		_PRINT_HELP=yes die "FATAL ERROR: There were spurious positional arguments --- we expect at most 2 (namely: $_required_args_string), but got ${_positionals_count} (the last one was: '${_last_positional}').
-	${_positionals[*]}" 1
+		_PRINT_HELP=yes die "FATAL ERROR: There were spurious positional arguments --- we expect at most 2 (namely: $_required_args_string), but got ${_positionals_count} (the last one was: '${_last_positional}').\n\t${_positionals[*]}" 1
 	fi
 	if [ "${_positionals_count}" -lt 2 ] && [ "$_helpHasBeenPrinted" == "1" ];then
 		_PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require at least 2 (namely: $_required_args_string), but got only ${_positionals_count}.
@@ -321,6 +332,7 @@ print_debug()
 	echo -e "	ai-name: ${_arg_ai_name}";
 	echo -e "	title: ${_arg_title}";
 	echo -e "	log-file: ${_arg_log_file}";
+	echo -e "	log: ${_arg_log}";
 	echo -e "	log: ${_arg_log}";
 
 }
@@ -373,4 +385,5 @@ handle_agent_command \
     "$_arg_api" \
     "$_arg_api_key" \
     "$_arg_conversation" \
+    "$_arg_log" \
     "${chat_args[@]}"

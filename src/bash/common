@@ -125,7 +125,8 @@ handle_agent_command() {
   local api="$7"
   local api_key="$8"
   local conversation="$9"
-  shift 9
+  local log="${10}"
+  shift 10
 
   # Extract provider from model if in format provider:model
   if [ "$provider" = "" ] && [[ "$model" == *":"* ]]; then
@@ -242,6 +243,9 @@ $system"
   fi
   if [ "$provider" != "" ]; then
     cmd+=(--provider "$provider")
+  fi
+  if [ "$log" != "" ]; then
+    cmd+=(--log "$log")
   fi
 
   # Add model configuration parameters if they exist
