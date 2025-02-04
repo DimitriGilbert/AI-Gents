@@ -284,7 +284,7 @@ fi
 handle_agent_command \
 	"$_arg_agent" \
 	"$_arg_prompt" \
-	"$_SCRIPT_DIR/../ask" \
+	"ask" \
 	"$_arg_provider" \
 	"$_arg_model" \
 	"$_arg_system" \

@@ -224,7 +224,7 @@ $system"
   # fi
 
   # Build command with all provided arguments
-  local cmd=("$cmd_name" "$prompt")
+  local cmd=("${AI_GENTS_DIR}/ai" "$cmd_name" "$prompt")
   if [ "$api" != "" ]; then
     cmd+=(--api "$api")
   fi
