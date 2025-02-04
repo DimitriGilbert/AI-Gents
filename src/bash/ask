@@ -637,13 +637,13 @@ if [ "$_arg_stream" == "on" ]; then
 					die "API Error: $error_msg" -2
 				fi
 				# Extract content using jq for more reliable parsing
-				content=$(echo "$resp_line" | jq -r '.choices[0].delta.content // ""')
+				content=$(echo "$resp_line" | jq -r '(.choices[0].delta.content // "") + "§"')
+				content="${content%§}" # Remove the marker character
 				if [ -n "$content" ]; then
 					# Handle special characters and formatting
 					content="${content//\\\"/\"}"
 					content="${content//\\n/$'\n'}"
 					content="${content//\\t/$'\t'}"
-					printf '%b' "$content" >>"$tmp_response"
 					content="${content//<think>/\\e[38;5;4m}"
 					content="${content//<\/think>/\\e[0m}"
 					printf '%b' "$content"
@@ -684,6 +684,7 @@ else
 			content="${content//\\n/$'\n'}"
 			content="${content//\\t/$'\t'}"
 			printf '%b' "$content"
+			printf '\n'
 		fi
 	fi
 fi
