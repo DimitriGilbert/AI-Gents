@@ -11,6 +11,75 @@ fi
 # Export the final provider value, using config if set, otherwise default
 export AI_DEFAULT_PROVIDER="${AI_DEFAULT_PROVIDER:-ollama}"
 
+# MCP server management functions
+get_mcp_server_config() {
+  local server_name="$1"
+  local config_file="$AI_USER_CONFIG_DIR/mcp-servers.yml"
+  
+  if [ ! -f "$config_file" ]; then
+    return 1
+  fi
+  
+  yq -r ".mcpServers.\"$server_name\"" "$config_file"
+}
+
+start_mcp_server() {
+  local server_name="$1"
+  local server_config
+  server_config="$(get_mcp_server_config "$server_name")" || return 1
+  
+  local command args
+  command="$(echo "$server_config" | yq -r '.command')"
+  args="$(echo "$server_config" | yq -r '.args[]')"
+  
+  # Create unique FIFO for this server instance
+  local fifo_dir="${TMPDIR:-/tmp}/ai-gents-mcp"
+  mkdir -p "$fifo_dir"
+  local fifo="$fifo_dir/${server_name}.fifo"
+  mkfifo "$fifo" 2>/dev/null || true
+  
+  # Start server in background
+  $command $args < "$fifo" &
+  local pid=$!
+  echo "$pid" > "$fifo_dir/${server_name}.pid"
+  
+  # Return FIFO path for communication
+  echo "$fifo"
+}
+
+send_mcp_request() {
+  local server_name="$1"
+  local method="$2"
+  local params="$3"
+  local fifo
+  
+  # Get or start server
+  if [ -f "${TMPDIR:-/tmp}/ai-gents-mcp/${server_name}.fifo" ]; then
+    fifo="${TMPDIR:-/tmp}/ai-gents-mcp/${server_name}.fifo"
+  else
+    fifo="$(start_mcp_server "$server_name")" || return 1
+  fi
+  
+  # Construct JSON-RPC request
+  local request
+  request="$(yq -n \
+    --arg method "$method" \
+    --argjson params "$params" \
+    '{jsonrpc: "2.0", id: 1, method: $method, params: $params}'
+  )"
+  
+  # Send request and get response
+  echo "$request" > "$fifo"
+  read -r response < "$fifo"
+  
+  # Check for errors
+  if echo "$response" | yq -e '.error' >/dev/null; then
+    return 1
+  fi
+  
+  echo "$response" | yq -r '.result'
+}
+
 get_llm_provider_url() {
   local provider="${1:-${AI_DEFAULT_PROVIDER}}"
   local url=""
@@ -32,6 +101,10 @@ get_llm_provider_url() {
     ;;
   "deepseek")
     url="https://api.deepseek.com"
+    ;;
+  "mcp")
+    # For MCP providers, URL is not needed as we use direct process communication
+    url="mcp://${2:-default}"
     ;;
   *)
     echo "Unsupported provider: $provider" 1

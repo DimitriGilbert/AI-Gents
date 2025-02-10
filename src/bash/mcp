@@ -1,0 +1,289 @@
+#!/bin/bash
+# @parseArger-begin
+# @parseArger-help "Work with MCP servers" --option "help" --short-option "h"
+# @parseArger-verbose --option "verbose" --level "0" --quiet-option "quiet"
+# @parseArger-leftovers leftovers
+_has_colors=0
+if [ -t 1 ]; then # Check if stdout is a terminal
+	ncolors=$(tput colors 2>/dev/null)
+	if [ -n "$ncolors" ] && [ "$ncolors" -ge 8 ]; then
+		_has_colors=1
+	fi
+fi
+# @parseArger-declarations
+# @parseArger pos target "what to do" --one-of "list" --one-of "start" --one-of "stop" --one-of "call"
+# @parseArger opt server "MCP server name" --default-value "default"
+# @parseArger opt method "JSON-RPC method to call (for call subcommand)" --default-value "prompts/list"
+# @parseArger opt params "JSON-RPC params (for call subcommand)" --default-value "{}"
+# @parseArger-declarations-end
+
+# @parseArger-utils
+_helpHasBeenPrinted=1;
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)";
+# @parseArger-utils-end
+
+# @parseArger-parsing
+
+__cli_arg_count=$#;
+
+die()
+{
+	local _ret=1
+    if [[ -n "$2" ]] && [[ "$2" =~ ^[0-9]+$ ]]; then
+   	_ret="$2"
+    fi
+	test "${_PRINT_HELP:-no}" = yes && print_help >&2
+	log "$1" -3 >&2
+	exit "${_ret}"
+}
+
+
+begins_with_short_option()
+{
+	local first_option all_short_options=''
+	first_option="${1:0:1}"
+	test "$all_short_options" = "${all_short_options/$first_option/}" && return 1 || return 0
+}
+
+# POSITIONALS ARGUMENTS
+_positionals=();
+_optional_positionals=();
+_arg_target="";
+_one_of_arg_target=("list" "start" "stop" "call" );
+# OPTIONALS ARGUMENTS
+_arg_server="default"
+_arg_method="prompts/list"
+_arg_params="{}"
+# FLAGS
+# NESTED
+# LEFTOVERS
+_arg_leftovers=()
+_verbose_level="0";
+
+
+
+print_help()
+{
+	_triggerSCHelp=1;
+
+	if [[ "$_helpHasBeenPrinted" == "1" ]]; then
+		_helpHasBeenPrinted=0;
+		echo -e "Work with MCP servers:"
+	echo -e "	target: what to do [one of 'list' 'start' 'stop' 'call']"
+	echo -e "	--server <server>: MCP server name [default: ' default ']"
+	echo -e "	--method <method>: JSON-RPC method to call (for call subcommand) [default: ' prompts/list ']"
+	echo -e "	--params <params>: JSON-RPC params (for call subcommand) [default: ' {} ']"
+	echo -e "Usage :
+	$0 <target> [--server <value>] [--method <value>] [--params <value>]";
+	fi
+
+}
+
+log() {
+	local _arg_msg="${1}";
+	local _arg_level="${2:-0}";
+	if [ "${_arg_level}" -le "${_verbose_level}" ]; then
+		case "$_arg_level" in
+			-3)
+				_arg_COLOR="\033[0;31m";
+				;;
+			-2)
+				_arg_COLOR="\033[0;33m";
+				;;
+			-1)
+				_arg_COLOR="\033[1;33m";
+				;;
+			1)
+				_arg_COLOR="\033[0;32m";
+				;;
+			2)
+				_arg_COLOR="\033[1;36m";
+				;;
+			3)
+				_arg_COLOR="\033[0;36m";
+				;;
+			*)
+				_arg_COLOR="\033[0m";
+				;;
+		esac
+		if [ "${_has_colors}" == "1" ]; then
+			echo -e "${_arg_COLOR}${_arg_msg}\033[0m";
+		else
+			echo "${_arg_msg}";
+		fi
+	fi
+}
+
+parse_commandline()
+{
+	_positionals_count=0
+	while test $# -gt 0
+	do
+		_key="$1"
+		case "$_key" in
+			--server)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_server="$2"
+				shift
+				;;
+			--server=*)
+				_arg_server="${_key##--server=}"
+				;;
+			
+			--method)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_method="$2"
+				shift
+				;;
+			--method=*)
+				_arg_method="${_key##--method=}"
+				;;
+			
+			--params)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_params="$2"
+				shift
+				;;
+			--params=*)
+				_arg_params="${_key##--params=}"
+				;;
+			
+			-h|--help)
+				print_help;
+				exit 0;
+				;;
+			-h*)
+				print_help;
+				exit 0;
+				;;
+			--verbose)
+					if [ $# -lt 2 ];then
+						_verbose_level="$((_verbose_level + 1))";
+					else
+						_verbose_level="$2";
+						shift;
+					fi
+					;;
+				--quiet)
+					if [ $# -lt 2 ];then
+						_verbose_level="$((_verbose_level - 1))";
+					else
+						_verbose_level="-$2";
+						shift;
+					fi
+					;;
+				
+				*)
+				_last_positional="$1"
+				_positionals+=("$_last_positional")
+				_positionals_count=$((_positionals_count + 1))
+				;;
+		esac
+		shift
+	done
+}
+
+
+handle_passed_args_count()
+{
+	local _required_args_string="target"
+	if [ "${_positionals_count}" -lt 1 ] && [ "$_helpHasBeenPrinted" == "1" ];then
+		_PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require at least 1 (namely: $_required_args_string), but got only ${_positionals_count}.
+	${_positionals[*]}" 1;
+	fi
+}
+
+
+assign_positional_args()
+{
+	local _positional_name _shift_for=$1;
+	_positional_names="_arg_target ";
+	_leftovers_count=$((${#_positionals[@]} - 1))
+	for ((ii = 0; ii < _leftovers_count; ii++));do
+		_positional_names="$_positional_names _arg_leftovers[$((ii + 0))]";
+	done
+
+	shift "$_shift_for"
+	for _positional_name in ${_positional_names};do
+		test $# -gt 0 || break;
+		if ! [[ "$_positional_name" =~ "_arg_leftovers" ]];then
+			eval "if [ \"\$_one_of${_positional_name}\" != \"\" ];then [[ \"\${_one_of${_positional_name}[*]}\" =~ \"\${1}\" ]];fi" || die "${_positional_name} must be one of: $(eval "echo \"\${_one_of${_positional_name}[*]}\"")" 1;
+		fi
+		eval "$_positional_name=\${1}" || die "Error during argument parsing, possibly an ParseArger bug." 1;
+		shift;
+	done
+}
+
+print_debug()
+{
+	print_help
+	# shellcheck disable=SC2145
+	echo "DEBUG: $0 $@";
+	
+	echo -e "	target: ${_arg_target}";
+	echo -e "	server: ${_arg_server}";
+	echo -e "	method: ${_arg_method}";
+	echo -e "	params: ${_arg_params}";
+	echo -e "	leftovers: ${_arg_leftovers[*]}";
+
+}
+
+
+on_interrupt() {
+	die Process aborted! 130;
+}
+
+
+parse_commandline "$@";
+handle_passed_args_count;
+assign_positional_args 1 "${_positionals[@]}";
+trap on_interrupt INT;
+
+
+
+# @parseArger-parsing-end
+# print_debug "$@"
+# @parseArger-end
+
+# shellcheck source=./common
+source "$_SCRIPT_DIR/common"
+
+case "$_arg_target" in
+  "list")
+    if [ -f "$AI_USER_CONFIG_DIR/mcp-servers.yml" ]; then
+      yq -r '.mcpServers | keys[]' "$AI_USER_CONFIG_DIR/mcp-servers.yml"
+    else
+      die "No MCP servers configured" 1
+    fi
+    ;;
+    
+  "start")
+    start_mcp_server "$_arg_server" || {
+      die "Failed to start MCP server: $_arg_server" 1
+    }
+    log "Started MCP server: $_arg_server" 1
+    ;;
+    
+  "stop")
+    pid_file="${TMPDIR:-/tmp}/ai-gents-mcp/${_arg_server}.pid"
+    if [ -f "$pid_file" ]; then
+      kill "$(cat "$pid_file")" 2>/dev/null || true
+      rm -f "$pid_file"
+      rm -f "${TMPDIR:-/tmp}/ai-gents-mcp/${_arg_server}.fifo"
+      log "Stopped MCP server: $_arg_server" 1
+    else
+      die "MCP server not running: $_arg_server" 1
+    fi
+    ;;
+    
+  "call")
+    response="$(send_mcp_request "$_arg_server" "$_arg_method" "$_arg_params")" || {
+      die "Failed to call MCP server: $_arg_server" 1
+    }
+    echo "$response"
+    ;;
+    
+  *)
+    die "Unknown command: $_arg_target" 1
+    ;;
+esac 

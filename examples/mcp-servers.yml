@@ -1,0 +1,25 @@
+mcpServers:
+  filesystem:
+    command: npx
+    args: 
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - "/path/to/allowed/files"
+    description: "MCP server for accessing files in a specified directory"
+  
+  git:
+    command: uvx
+    args:
+      - mcp-server-git
+      - --repository
+      - "/path/to/git/repo"
+    description: "MCP server for Git repository access"
+  
+  prompts:
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-prompts"
+      - --dir
+      - "/path/to/prompts"
+    description: "MCP server for managing prompts" 
