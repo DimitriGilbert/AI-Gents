@@ -406,8 +406,7 @@ if [ -n "$_arg_prompt" ]; then
     printf "%s > " "$_arg_ai_name"
     
     # Build command array
-    askCmd=("$_SCRIPT_DIR/../../../ai" ask)
-    askCmd+=("${prompt}")
+    askCmd=("$_SCRIPT_DIR/../../../ai" ask "${prompt}" --stream)
 
     [[ -n "$provider" ]] && askCmd+=(--provider "$provider")
     [[ -n "$_arg_model" ]] && askCmd+=(--model "$_arg_model")
@@ -460,7 +459,7 @@ while true; do
     
     # Build command array
     askCmd=("$_SCRIPT_DIR/../../../ai" ask)
-    askCmd+=("${processed_input}")
+    askCmd+=("${processed_input}" --stream)
 
     [[ -n "$provider" ]] && askCmd+=(--provider "$provider")
     [[ -n "$_arg_model" ]] && askCmd+=(--model "$_arg_model")
