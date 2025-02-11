@@ -465,6 +465,45 @@ trap on_interrupt INT
 
 source "$_SCRIPT_DIR/common"
 
+# Helper function to parse command with arguments while preserving quotes
+parse_command() {
+	local cmd="$1"
+	local args=()
+	local current=""
+	local in_quotes=false
+	local quote_char=""
+	
+	for (( i=0; i<${#cmd}; i++ )); do
+		char="${cmd:$i:1}"
+		next_char="${cmd:$i+1:1}"
+		
+		if [[ "$char" == "'" || "$char" == '"' ]]; then
+			if [[ "$in_quotes" == true && "$quote_char" == "$char" ]]; then
+				in_quotes=false
+				quote_char=""
+			elif [[ "$in_quotes" == false ]]; then
+				in_quotes=true
+				quote_char="$char"
+			else
+				current+="$char"
+			fi
+		elif [[ "$char" == " " && "$in_quotes" == false ]]; then
+			if [[ -n "$current" ]]; then
+				args+=("$current")
+				current=""
+			fi
+		else
+			current+="$char"
+		fi
+	done
+	
+	if [[ -n "$current" ]]; then
+		args+=("$current")
+	fi
+	
+	echo "${args[@]}"
+}
+
 # Process the API response for a structured function_call
 process_function_call() {
 	local response_json="$1"
@@ -578,8 +617,8 @@ if [ "${#_arg_prompt_cmds[@]}" -gt 0 ]; then
 	# for each line, fill an array with each command and its arguments
 	for i in "${!_arg_prompt_cmds[@]}"; do
 		match="${matches[$i]}"
-		# split the command into an array
-		read -ra _tmpCmd <<<"${_arg_prompt_cmds[$i]}"
+		# Parse the command and its arguments properly
+		read -ra _tmpCmd <<< "$(parse_command "${_arg_prompt_cmds[$i]}")"
 		# execute the command and get its output
 		to_put_in_arg_prompt="$("${_tmpCmd[@]}" 2>&1)"
 
@@ -598,6 +637,12 @@ fi
 if [ "$_arg_conversation" != "" ]; then
 	# Read messages from conversation file
 	messages="["
+	# Add system message if provided
+	if [ "$_arg_system" != "" ]; then
+		messages="$messages{\"role\": \"system\", \"content\": $(jq -R -s '.' <<<"$_arg_system")}"
+	fi
+	
+	# Read existing conversation messages
 	while IFS= read -r line; do
 		if [ -n "$line" ]; then
 			if [ "$messages" != "[" ]; then
@@ -685,9 +730,8 @@ fi
 # die "$(cat "$tmp_payload")" 0
 
 if [ "$_arg_log" != "" ]; then
-	echo -e "ai ask curl command:\n${curl_cmd[*]}" >>"$_arg_log"
-	echo -e "ai ask payload:\n$(cat "$tmp_payload")" >>"$_arg_log"
-	echo -e "ai ask response:\n" >>"$_arg_log"
+	echo -e "___\nai ask curl command:\n${curl_cmd[*]}" >>"$_arg_log"
+	echo -e "___\nai ask payload:\n$(cat "$tmp_payload")" >>"$_arg_log"
 fi
 
 if [ "$_arg_stream" == "on" ]; then
@@ -758,7 +802,7 @@ else
 			printf '%b' "$content"
 			printf '\n'
 			if [ "$_arg_log" != "" ]; then
-				printf '%b' "$content" >>"$_arg_log"
+				printf "___\n### AI\n\n%s\n" "$content" >> "$_arg_log"
 			fi
 
 			# Process any function calls

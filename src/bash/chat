@@ -20,7 +20,7 @@ fi
 # @parseArger opt user "username" --default-value "didi"
 # @parseArger opt ai-name "AI name" --default-value "AI"
 # @parseArger opt title "chat title, force log"
-# @parseArger opt log-file "log file for the chat"
+# @parseArger opt log "log file for the chat"
 # @parseArger opt tools "tools param for http request"
 # @parseArger opt tool_choice "tool_choice param for http request"
 # @parseArger opt max_tokens "max_tokens param for http request"
@@ -35,7 +35,6 @@ fi
 # @parseArger opt top_logprobs "top_logprobs param for http request"
 # @parseArger opt response_format "response_format param for http request"
 # @parseArger opt structured_outputs "structured_outputs param for http request"
-# @parseArger flag log "log chat"
 # @parseArger-declarations-end
 
 # @parseArger-utils
@@ -80,7 +79,7 @@ _arg_provider=
 _arg_user="didi"
 _arg_ai_name="AI"
 _arg_title=
-_arg_log_file=
+_arg_log=
 _arg_tools=
 _arg_tool_choice=
 _arg_max_tokens=
@@ -96,7 +95,6 @@ _arg_top_logprobs=
 _arg_response_format=
 _arg_structured_outputs=
 # FLAGS
-_arg_log="off"
 # NESTED
 _verbose_level="0";
 
@@ -119,7 +117,7 @@ print_help()
 	echo -e "	--user <user>: username [default: ' didi ']"
 	echo -e "	--ai-name <ai-name>: AI name [default: ' AI ']"
 	echo -e "	--title <title>: chat title, force log"
-	echo -e "	--log-file <log-file>: log file for the chat"
+	echo -e "	--log <log>: log file for the chat"
 	echo -e "	--tools <tools>: tools param for http request"
 	echo -e "	--tool_choice <tool_choice>: tool_choice param for http request"
 	echo -e "	--max_tokens <max_tokens>: max_tokens param for http request"
@@ -134,9 +132,8 @@ print_help()
 	echo -e "	--top_logprobs <top_logprobs>: top_logprobs param for http request"
 	echo -e "	--response_format <response_format>: response_format param for http request"
 	echo -e "	--structured_outputs <structured_outputs>: structured_outputs param for http request"
-	echo -e "	--log|--no-log: log chat"
 	echo -e "Usage :
-	$0 <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--user <value>] [--ai-name <value>] [--title <value>] [--log-file <value>] [--tools <value>] [--tool_choice <value>] [--max_tokens <value>] [--temperature <value>] [--top_p <value>] [--stop <value>] [--frequency_penalty <value>] [--presence_penalty <value>] [--seed <value>] [--logit_bias <value>] [--logprobs <value>] [--top_logprobs <value>] [--response_format <value>] [--structured_outputs <value>] [--[no-]log]";
+	$0 <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--user <value>] [--ai-name <value>] [--title <value>] [--log <value>] [--tools <value>] [--tool_choice <value>] [--max_tokens <value>] [--temperature <value>] [--top_p <value>] [--stop <value>] [--frequency_penalty <value>] [--presence_penalty <value>] [--seed <value>] [--logit_bias <value>] [--logprobs <value>] [--top_logprobs <value>] [--response_format <value>] [--structured_outputs <value>]";
 	fi
 
 }
@@ -264,13 +261,13 @@ parse_commandline()
 				_arg_title="${_key##--title=}"
 				;;
 			
-			--log-file)
+			--log)
 				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-				_arg_log_file="$2"
+				_arg_log="$2"
 				shift
 				;;
-			--log-file=*)
-				_arg_log_file="${_key##--log-file=}"
+			--log=*)
+				_arg_log="${_key##--log=}"
 				;;
 			
 			--tools)
@@ -399,12 +396,6 @@ parse_commandline()
 				_arg_structured_outputs="${_key##--structured_outputs=}"
 				;;
 			
-			--log)
-				_arg_log="on"
-				;;
-			--no-log)
-				_arg_log="off"
-				;;
 			-h|--help)
 				print_help;
 				exit 0;
@@ -483,7 +474,7 @@ print_debug()
 	echo -e "	user: ${_arg_user}";
 	echo -e "	ai-name: ${_arg_ai_name}";
 	echo -e "	title: ${_arg_title}";
-	echo -e "	log-file: ${_arg_log_file}";
+	echo -e "	log: ${_arg_log}";
 	echo -e "	tools: ${_arg_tools}";
 	echo -e "	tool_choice: ${_arg_tool_choice}";
 	echo -e "	max_tokens: ${_arg_max_tokens}";
@@ -498,7 +489,6 @@ print_debug()
 	echo -e "	top_logprobs: ${_arg_top_logprobs}";
 	echo -e "	response_format: ${_arg_response_format}";
 	echo -e "	structured_outputs: ${_arg_structured_outputs}";
-	echo -e "	log: ${_arg_log}";
 
 }
 
@@ -523,9 +513,9 @@ source "$_SCRIPT_DIR/common"
 
 # Create log file if title is provided or logging is enabled
 log_file=""
-if [ "$_arg_title" != "" ] || [ "$_arg_log" == "on" ]; then
-    if [ "$_arg_log_file" != "" ]; then
-        log_file="$_arg_log_file"
+if [ "$_arg_title" != "" ] || [ "$_arg_log" != "" ]; then
+    if [ "$_arg_log" != "" ]; then
+        log_file="$_arg_log"
     else
         timestamp=$(date +%Y-%m-%d-%H-%M-%S)
         title_slug="${_arg_title:-chat}"
@@ -603,7 +593,7 @@ while true; do
     fi
     
     # Log user input
-    append_to_log "$_arg_user" "$user_input"
+    # append_to_log "$_arg_user" "$user_input"
     
     # Add user message to messages array
     printf '{"role": "user", "content": %s}\n' "$(jq -R -s '.' <<<"$user_input")" >> "$messages_file"
@@ -620,6 +610,7 @@ while true; do
     [[ -n "$_arg_system" ]] && ask_cmd+=(--system "$_arg_system")
     [[ -n "$messages_file" ]] && ask_cmd+=(--conversation "$messages_file")
     [[ -n "$_arg_provider" ]] && ask_cmd+=(--provider "$_arg_provider")
+    [[ -n "$_arg_log" ]] && ask_cmd+=(--log "$_arg_log")
     [[ -n "$_arg_tools" ]] && ask_cmd+=(--tools "$_arg_tools")
     [[ -n "$_arg_tool_choice" ]] && ask_cmd+=(--tool_choice "$_arg_tool_choice")
     [[ -n "$_arg_max_tokens" ]] && ask_cmd+=(--max_tokens "$_arg_max_tokens")
@@ -634,6 +625,7 @@ while true; do
     [[ -n "$_arg_top_logprobs" ]] && ask_cmd+=(--top_logprobs "$_arg_top_logprobs")
     [[ -n "$_arg_response_format" ]] && ask_cmd+=(--response_format "$_arg_response_format")
     [[ -n "$_arg_structured_outputs" ]] && ask_cmd+=(--structured_outputs "$_arg_structured_outputs")
+		
     
     # new line for clarity
     echo
@@ -647,7 +639,7 @@ while true; do
     printf '{"role": "assistant", "content": %s}\n' "$(jq -R -s '.' <<<"$response")" >> "$messages_file"
     
     # Log AI response with generation time
-    append_to_log "$_arg_ai_name" "$response" "${gen_time}s"
+    # append_to_log "$_arg_ai_name" "$response" "${gen_time}s"
     
     # Update conversation history for rlwrap
     {

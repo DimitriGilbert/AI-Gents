@@ -254,23 +254,23 @@ config_dir="$HOME/.config/ai-gents/agents"
 config_file="$config_dir/${_arg_name}.yml"
 
 # Copy base template
-yq -y ".name = \"${_arg_name}\"" "$_SCRIPT_DIR/../../../agent.yml" > "$config_file"
+yq ".name = \"${_arg_name}\"" "$_SCRIPT_DIR/../../../agent.yml" > "$config_file"
 
 # Update optional fields if provided
 if [ -n "$_arg_prompt" ]; then
-    yq -yi ".system.prompt = \"${_arg_prompt}\"" "$config_file"
+    yq -i ".system.prompt = \"${_arg_prompt}\"" "$config_file"
 fi
 
 if [ -n "$_arg_provider" ]; then
-    yq -yi ".model.provider = \"${_arg_provider}\"" "$config_file"
+    yq -i ".model.provider = \"${_arg_provider}\"" "$config_file"
 fi
 
 if [ -n "$_arg_model" ]; then
-    yq -yi ".model.name = \"${_arg_model}\"" "$config_file"
+    yq -i ".model.name = \"${_arg_model}\"" "$config_file"
 fi
 
 if [ -n "$_arg_temperature" ]; then
-    yq -yi ".model.temperature = ${_arg_temperature}" "$config_file"
+    yq -i ".model.temperature = ${_arg_temperature}" "$config_file"
 fi
 
 log "Agent '${_arg_name}' created at ${config_file}" 1

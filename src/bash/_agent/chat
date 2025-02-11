@@ -21,9 +21,7 @@ fi
 # @parseArger opt user "username" --default-value "didi"
 # @parseArger opt ai-name "AI name" --default-value "AI"
 # @parseArger opt title "chat title, force log"
-# @parseArger opt log-file "log file for the chat"
 # @parseArger opt log "log file"
-# @parseArger flag log "log chat"
 # @parseArger-declarations-end
 
 # @parseArger-utils
@@ -69,10 +67,8 @@ _arg_provider=
 _arg_user="didi"
 _arg_ai_name="AI"
 _arg_title=
-_arg_log_file=
 _arg_log=
 # FLAGS
-_arg_log="off"
 # NESTED
 _verbose_level="0";
 
@@ -96,11 +92,9 @@ print_help()
 	echo -e "	--user <user>: username [default: ' didi ']"
 	echo -e "	--ai-name <ai-name>: AI name [default: ' AI ']"
 	echo -e "	--title <title>: chat title, force log"
-	echo -e "	--log-file <log-file>: log file for the chat"
 	echo -e "	--log <log>: log file"
-	echo -e "	--log|--no-log: log chat"
 	echo -e "Usage :
-	$0 <agent> <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--user <value>] [--ai-name <value>] [--title <value>] [--log-file <value>] [--log <value>] [--[no-]log]";
+	$0 <agent> <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--user <value>] [--ai-name <value>] [--title <value>] [--log <value>]";
 	fi
 
 }
@@ -228,15 +222,6 @@ parse_commandline()
 				_arg_title="${_key##--title=}"
 				;;
 			
-			--log-file)
-				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-				_arg_log_file="$2"
-				shift
-				;;
-			--log-file=*)
-				_arg_log_file="${_key##--log-file=}"
-				;;
-			
 			--log)
 				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
 				_arg_log="$2"
@@ -246,12 +231,6 @@ parse_commandline()
 				_arg_log="${_key##--log=}"
 				;;
 			
-			--log)
-				_arg_log="on"
-				;;
-			--no-log)
-				_arg_log="off"
-				;;
 			-h|--help)
 				print_help;
 				exit 0;
@@ -331,8 +310,6 @@ print_debug()
 	echo -e "	user: ${_arg_user}";
 	echo -e "	ai-name: ${_arg_ai_name}";
 	echo -e "	title: ${_arg_title}";
-	echo -e "	log-file: ${_arg_log_file}";
-	echo -e "	log: ${_arg_log}";
 	echo -e "	log: ${_arg_log}";
 
 }
@@ -367,23 +344,146 @@ fi
 if [ "$_arg_title" != "" ]; then
     chat_args+=(--title "$_arg_title")
 fi
-if [ "$_arg_log_file" != "" ]; then
-    chat_args+=(--log-file "$_arg_log_file")
-fi
-if [ "$_arg_log" = "on" ]; then
-    chat_args+=(--log)
+
+# Get agent file once at start 
+agent_file="$(get_agent_file "$_arg_agent")" || die "Could not find agent: $_arg_agent" 1
+
+# Get system prompt from agent config
+agent_system="$(echo "$agent_file" | yq -r '.system.prompt // ""')"
+[ -n "$agent_system" ] && _arg_system+=$'\n'"$agent_system"
+
+# Extract model parameters and format as --flags
+model_args=()
+provider=$(echo "$agent_file" | yq -r '.model.provider // ""')
+temperature=$(echo "$agent_file" | yq -r '.model.temperature // ""')
+model_name=$(echo "$agent_file" | yq -r '.model.name // ""')
+
+[[ -n "$temperature" ]] && model_args+=(--temperature "$temperature")
+[[ -n "$model_name" ]] && model_args+=(--model "$model_name")
+
+# Process tasks directly with agent file content
+mapfile -t processed < <(process_tasks_in_prompt "$_arg_prompt" "$agent_file")
+[[ -n "${processed[0]}" ]] && _arg_system+=$'\n'"${processed[0]}"
+prompt="${processed[1]}"
+
+# Initialize messages with system prompt
+messages_file="$(TMPDIR="${TMPDIR:-/tmp}" mktemp)"
+if [ -n "$_arg_system" ]; then
+    printf '{"role": "system", "content": %s}\n' "$(jq -R -s '.' <<<"$_arg_system")" > "$messages_file"
 fi
 
-# Handle command through common function
-handle_agent_command \
-    "$_arg_agent" \
-    "$_arg_prompt" \
-    "chat" \
-    "$_arg_provider" \
-    "$_arg_model" \
-    "$_arg_system" \
-    "$_arg_api" \
-    "$_arg_api_key" \
-    "$_arg_conversation" \
-    "$_arg_log" \
-    "${chat_args[@]}"
+# Create log file if title is provided
+log_file=""
+if [ "$_arg_title" != "" ] || [ "$_arg_log" != "" ]; then
+    if [ "$_arg_log" != "" ]; then
+        log_file="$_arg_log"
+    else
+        timestamp=$(date +%Y-%m-%d-%H-%M-%S)
+        title_slug="${_arg_title:-chat}"
+        title_slug="${title_slug// /-}"
+        log_file="${title_slug}-${timestamp}.md"
+    fi
+    
+    # Initialize markdown file with title and system prompt
+    {
+        printf "# %s\n\n" "${_arg_title:-Chat}"
+        [ -n "$agent_system" ] && printf "## System\n\n%s\n\n" "$agent_system"
+    } > "$log_file"
+fi
+
+# Initialize conversation history
+conversation_file="$(TMPDIR="${TMPDIR:-/tmp}" mktemp)"
+
+# Handle initial prompt if provided
+if [ -n "$_arg_prompt" ]; then
+    # Log user message
+    [ -n "$log_file" ] && printf "\n### %s\n\n%s\n" "$_arg_user" "$prompt" >> "$log_file"
+    
+    # Add to conversation history
+    printf '{"role": "user", "content": %s}\n' "$(jq -R -s '.' <<<"$prompt")" > "$messages_file"
+    
+    # Get AI response
+    printf "%s > " "$_arg_ai_name"
+    
+    # Build command array
+    askCmd=("$_SCRIPT_DIR/../../../ai" ask)
+    askCmd+=("${prompt}")
+
+    [[ -n "$provider" ]] && askCmd+=(--provider "$provider")
+    [[ -n "$_arg_model" ]] && askCmd+=(--model "$_arg_model")
+    [[ -n "$_arg_system" ]] && askCmd+=(--system "$_arg_system")
+    [[ -n "$_arg_api" ]] && askCmd+=(--api "$_arg_api")
+    [[ -n "$_arg_api_key" ]] && askCmd+=(--api-key "$_arg_api_key")
+    [[ -n "$_arg_log" ]] && askCmd+=(--log "$_arg_log")
+    # [[ -n "$messages_file" ]] && askCmd+=(--conversation "$messages_file")
+
+    # Add model args
+    [[ ${#model_args[@]} -gt 0 ]] && askCmd+=("${model_args[@]}")
+    
+    response=$("${askCmd[@]}" | tee /dev/tty)
+    echo
+        
+    # Add to conversation history
+    printf '{"role": "assistant", "content": %s}\n' "$(jq -R -s '.' <<<"$response")" >> "$messages_file"
+    echo "$prompt" >> "$conversation_file"
+    # echo "$response" >> "$conversation_file"
+fi
+
+# Start chat loop
+while true; do
+    # Get user input
+    user_input="$(rlwrap -H "$conversation_file" -S "${_arg_user} > " bash -c 'read -r line && echo "${line}"')"
+    
+    # Check for empty input or Ctrl+D
+    if [ -z "$user_input" ]; then
+        echo "Goodbye!"
+        break
+    fi
+    
+    # Process tasks in input
+    mapfile -t processed < <(process_tasks_in_prompt "$user_input" "$agent_file")
+    task_system="${processed[0]}"
+    processed_input="${processed[1]}"
+    
+    # Update system prompt if tasks found
+    if [ -n "$task_system" ]; then
+        _arg_system+=$'\n'"$task_system"
+        # Add updated system message
+        printf '{"role": "system", "content": %s}\n' "$(jq -R -s '.' <<<"$_arg_system")" >> "$messages_file"
+    fi
+    
+    # Log user message
+    [ -n "$log_file" ] && printf "\n### %s\n\n%s\n" "$_arg_user" "$processed_input" >> "$log_file"
+        
+    # Get AI response
+    printf "%s > " "$_arg_ai_name"
+    
+    # Build command array
+    askCmd=("$_SCRIPT_DIR/../../../ai" ask)
+    askCmd+=("${processed_input}")
+
+    [[ -n "$provider" ]] && askCmd+=(--provider "$provider")
+    [[ -n "$_arg_model" ]] && askCmd+=(--model "$_arg_model")
+    [[ -n "$_arg_system" ]] && askCmd+=(--system "$_arg_system")
+    [[ -n "$_arg_api" ]] && askCmd+=(--api "$_arg_api")
+    [[ -n "$_arg_api_key" ]] && askCmd+=(--api-key "$_arg_api_key")
+    [[ -n "$_arg_log" ]] && askCmd+=(--log "$_arg_log")
+    [[ -n "$messages_file" ]] && askCmd+=(--conversation "$messages_file")
+
+    # Add model args
+    [[ ${#model_args[@]} -gt 0 ]] && askCmd+=("${model_args[@]}")
+    
+    response=$("${askCmd[@]}" | tee /dev/tty)
+    echo
+    
+    # Log AI response
+    # [ -n "$log_file" ] && printf "\n### %s\n\n%s\n" "$_arg_ai_name" "$response" >> "$log_file"
+    
+    # Update conversation history
+    printf '{"role": "assistant", "content": %s}\n' "$(jq -R -s '.' <<<"$response")" >> "$messages_file"
+    echo "$processed_input" >> "$conversation_file"
+    # echo "$response" >> "$conversation_file"
+done
+
+# Cleanup
+rm -f "$conversation_file" "$messages_file"

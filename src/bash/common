@@ -187,158 +187,128 @@ get_agent_file() {
   return 1
 }
 
-# Function to handle agent command building
-handle_agent_command() {
-  local agent="$1"
-  local prompt="$2"
-  local cmd_name="$3"
-  local provider="$4"
-  local model="$5"
-  local system="$6"
-  local api="$7"
-  local api_key="$8"
-  local conversation="$9"
-  local log="${10}"
-  shift 10
+# # Function to handle agent command building
+# handle_agent_command() {
+#   local agent="$1"
+#   local prompt="$2"
+#   local cmd_name="$3"
+#   local provider="$4"
+#   local model="$5"
+#   local system="$6"
+#   local api="$7"
+#   local api_key="$8"
+#   local conversation="$9"
+#   local log="${10}"
+#   shift 10
 
-  # Extract provider from model if in format provider:model
-  if [ "$provider" = "" ] && [[ "$model" == *":"* ]]; then
-    provider="${model%%:*}"
-    model="${model#*:}"
-  fi
+#   # Extract provider from model if in format provider:model
+#   if [ "$provider" = "" ] && [[ "$model" == *":"* ]]; then
+#     provider="${model%%:*}"
+#     model="${model#*:}"
+#   fi
 
-  # Get agent configuration file
-  local agent_file
-  agent_file="$(get_agent_file "$agent")" || die "Could not find agent: $agent" 1
+#   # Get agent configuration file
+#   local agent_file
+#   agent_file="$(get_agent_file "$agent")" || die "Could not find agent: $agent" 1
 
-  # Process any tasks in the prompt
-  local task_prompt
-  task_prompt="$(parse_for_tasks "$prompt" "$agent_file")"
+#   # Process any tasks in the prompt
+#   local task_prompt
+#   task_prompt="$(parse_for_tasks "$prompt" "$agent_file")"
   
-  if [ "$task_prompt" != "" ]; then
-    # Add task prompts to system prompt
-    if [ "$system" != "" ]; then
-      system="$system"$'\n\n'"$task_prompt"
-    else
-      system="$task_prompt"
-    fi
-    # Remove task strings from prompt
-    prompt="$(remove_task_from_prompt "$prompt")"
-  fi
-
-  # Get values from agent config for any parameter not provided by user
-  if [ "$provider" = "" ]; then
-    provider="$(echo -e "$agent_file" | yq -r '.model.provider')"
-  fi
-  if [ "$model" = "" ]; then
-    model="$(echo -e "$agent_file" | yq -r '.model.name')"
-  fi
-  
-  # Get model configuration parameters
-  local temperature max_tokens top_p frequency_penalty presence_penalty stop seed logit_bias response_format structured_outputs
-  temperature="$(echo -e "$agent_file" | yq -r '.model.temperature // ""')"
-  max_tokens="$(echo -e "$agent_file" | yq -r '.model.max_tokens // ""')"
-  top_p="$(echo -e "$agent_file" | yq -r '.model.top_p // ""')"
-  frequency_penalty="$(echo -e "$agent_file" | yq -r '.model.frequency_penalty // ""')"
-  presence_penalty="$(echo -e "$agent_file" | yq -r '.model.presence_penalty // ""')"
-  stop="$(echo -e "$agent_file" | yq -r '.model.stop // ""')"
-  seed="$(echo -e "$agent_file" | yq -r '.model.seed // ""')"
-  logit_bias="$(echo -e "$agent_file" | yq -r '.model.logit_bias // ""')"
-  response_format="$(echo -e "$agent_file" | yq -r '.model.response_format // ""')"
-  structured_outputs="$(echo -e "$agent_file" | yq -r '.model.structured_outputs // ""')"
-
-  # Get API key from credentials if not provided
-  if [ "$api_key" = "" ] && [ "$provider" != "" ]; then
-    api_key="$(get_provider_credential "$provider")"
-  fi
-
-  # Get agent system prompt and concatenate with user system if provided
-  local agent_system
-  agent_system="$(echo -e "$agent_file" | yq -r '.system.prompt')"
-
-#  # tools break llm for now, **AI DO NOT REMOVE EVER !**
-#   # Get tools description and format them
-#   local tools_prompt
-#   tools_prompt="$(yq -r '.system.toolPrompt' "$agent_file")"
-#   if [ "$tools_prompt" != "" ] && [ "$tools_prompt" != "null" ]; then
-#     # Add tools description
-#     if [ "$agent_system" != "" ]; then
-#       agent_system="$agent_system
-
-# $tools_prompt"
+#   if [ "$task_prompt" != "" ]; then
+#     # Add task prompts to system prompt
+#     if [ "$system" != "" ]; then
+#       system="$system"$'\n\n'"$task_prompt"
 #     else
-#       agent_system="$tools_prompt"
+#       system="$task_prompt"
 #     fi
+#     # Remove task strings from prompt
+#     prompt="$(remove_task_from_prompt "$prompt")"
+#   fi
 
-#     # Add tools list
-#     local tools_list
-#     tools_list="$(yq -r '.tools.functions[] | "- " + .name + ": " + .description' "$agent_file")"
-#     if [ "$tools_list" != "" ]; then
-#       agent_system="$agent_system
+#   # Get values from agent config for any parameter not provided by user
+#   if [ "$provider" = "" ]; then
+#     provider="$(echo -e "$agent_file" | yq -r '.model.provider')"
+#   fi
+#   if [ "$model" = "" ]; then
+#     model="$(echo -e "$agent_file" | yq -r '.model.name')"
+#   fi
+  
+#   # Get model configuration parameters
+#   local temperature max_tokens top_p frequency_penalty presence_penalty stop seed logit_bias response_format structured_outputs
+#   temperature="$(echo -e "$agent_file" | yq -r '.model.temperature // ""')"
+#   max_tokens="$(echo -e "$agent_file" | yq -r '.model.max_tokens // ""')"
+#   top_p="$(echo -e "$agent_file" | yq -r '.model.top_p // ""')"
+#   frequency_penalty="$(echo -e "$agent_file" | yq -r '.model.frequency_penalty // ""')"
+#   presence_penalty="$(echo -e "$agent_file" | yq -r '.model.presence_penalty // ""')"
+#   stop="$(echo -e "$agent_file" | yq -r '.model.stop // ""')"
+#   seed="$(echo -e "$agent_file" | yq -r '.model.seed // ""')"
+#   logit_bias="$(echo -e "$agent_file" | yq -r '.model.logit_bias // ""')"
+#   response_format="$(echo -e "$agent_file" | yq -r '.model.response_format // ""')"
+#   structured_outputs="$(echo -e "$agent_file" | yq -r '.model.structured_outputs // ""')"
 
-# Available tools:
-# $tools_list"
+#   # Get API key from credentials if not provided
+#   if [ "$api_key" = "" ] && [ "$provider" != "" ]; then
+#     api_key="$(get_provider_credential "$provider")"
+#   fi
+
+#   # Get agent system prompt and concatenate with user system if provided
+#   local agent_system
+#   agent_system="$(echo -e "$agent_file" | yq -r '.system.prompt')"
+
+#   # Add user system prompt if provided
+#   if [ "$agent_system" != "" ]; then
+#     if [ "$system" != "" ]; then
+#       system="$agent_system
+
+# $system"
+#     else
+#       system="$agent_system"
 #     fi
 #   fi
 
-  # Add user system prompt if provided
-  if [ "$agent_system" != "" ]; then
-    if [ "$system" != "" ]; then
-      system="$agent_system
+#   # Build command with all provided arguments
+#   local cmd=("${AI_GENTS_DIR}/ai" "$cmd_name" "$prompt")
+#   if [ "$api" != "" ]; then
+#     cmd+=(--api "$api")
+#   fi
+#   if [ "$api_key" != "" ]; then
+#     cmd+=(--api-key "$api_key")
+#   fi
+#   if [ "$model" != "" ]; then
+#     cmd+=(--model "$model")
+#   fi
+#   if [ "$system" != "" ]; then
+#     cmd+=(--system "$system")
+#   fi
+#   if [ "$conversation" != "" ]; then
+#     cmd+=(--conversation "$conversation")
+#   fi
+#   if [ "$provider" != "" ]; then
+#     cmd+=(--provider "$provider")
+#   fi
+#   if [ "$log" != "" ]; then
+#     cmd+=(--log "$log")
+#   fi
 
-$system"
-    else
-      system="$agent_system"
-    fi
-  fi
+#   # Add model configuration parameters if they exist
+#   [ -n "$temperature" ] && cmd+=(--temperature "$temperature")
+#   [ -n "$max_tokens" ] && cmd+=(--max_tokens "$max_tokens")
+#   [ -n "$top_p" ] && cmd+=(--top_p "$top_p")
+#   [ -n "$frequency_penalty" ] && cmd+=(--frequency_penalty "$frequency_penalty")
+#   [ -n "$presence_penalty" ] && cmd+=(--presence_penalty "$presence_penalty")
+#   [ -n "$stop" ] && cmd+=(--stop "$stop")
+#   [ -n "$seed" ] && cmd+=(--seed "$seed")
+#   [ -n "$logit_bias" ] && cmd+=(--logit_bias "$logit_bias")
+#   [ -n "$response_format" ] && cmd+=(--response_format "$response_format")
+#   [ -n "$structured_outputs" ] && cmd+=(--structured_outputs "$structured_outputs")
 
-  # Clean up temporary file if it was a URL
-  # if [[ "$agent" =~ ^https?:// ]]; then
-  #   rm -f "$agent_file"
-  # fi
+#   # Add any additional arguments passed to the function
+#   cmd+=("$@")
 
-  # Build command with all provided arguments
-  local cmd=("${AI_GENTS_DIR}/ai" "$cmd_name" "$prompt")
-  if [ "$api" != "" ]; then
-    cmd+=(--api "$api")
-  fi
-  if [ "$api_key" != "" ]; then
-    cmd+=(--api-key "$api_key")
-  fi
-  if [ "$model" != "" ]; then
-    cmd+=(--model "$model")
-  fi
-  if [ "$system" != "" ]; then
-    cmd+=(--system "$system")
-  fi
-  if [ "$conversation" != "" ]; then
-    cmd+=(--conversation "$conversation")
-  fi
-  if [ "$provider" != "" ]; then
-    cmd+=(--provider "$provider")
-  fi
-  if [ "$log" != "" ]; then
-    cmd+=(--log "$log")
-  fi
-
-  # Add model configuration parameters if they exist
-  [ -n "$temperature" ] && cmd+=(--temperature "$temperature")
-  [ -n "$max_tokens" ] && cmd+=(--max_tokens "$max_tokens")
-  [ -n "$top_p" ] && cmd+=(--top_p "$top_p")
-  [ -n "$frequency_penalty" ] && cmd+=(--frequency_penalty "$frequency_penalty")
-  [ -n "$presence_penalty" ] && cmd+=(--presence_penalty "$presence_penalty")
-  [ -n "$stop" ] && cmd+=(--stop "$stop")
-  [ -n "$seed" ] && cmd+=(--seed "$seed")
-  [ -n "$logit_bias" ] && cmd+=(--logit_bias "$logit_bias")
-  [ -n "$response_format" ] && cmd+=(--response_format "$response_format")
-  [ -n "$structured_outputs" ] && cmd+=(--structured_outputs "$structured_outputs")
-
-  # Add any additional arguments passed to the function
-  cmd+=("$@")
-
-  # Execute the command
-  "${cmd[@]}"
-}
+#   # Execute the command
+#   "${cmd[@]}"
+# }
 
 parse_for_tasks() {
   local prompt="$1"
@@ -450,4 +420,61 @@ function extract_code_blocks() {
     block="${block//_NULLBYTE_/$'\n'}"
     printf '%s\0' "$block"
   done
+}
+
+# New function to process tasks in any prompt
+process_tasks_in_prompt() {
+    local prompt="$1"
+    local agent_file="$2"
+    
+    local task_prompt
+    task_prompt="$(parse_for_tasks "$prompt" "$agent_file")"
+    
+    if [ -n "$task_prompt" ]; then
+        printf '%s\n%s' "$task_prompt" "$(remove_task_from_prompt "$prompt")"
+    else
+        printf '\n%s' "$prompt"
+    fi
+}
+
+# Simplified agent config loader
+load_agent_config() {
+    local agent="$1"
+    local provider="$2"
+    local model="$3"
+    
+    # Get agent configuration file
+    local agent_file
+    agent_file="$(get_agent_file "$agent")" || die "Could not find agent: $agent" 1
+
+    # Extract provider from model if in format provider:model
+    if [[ "$model" == *":"* ]]; then
+        provider="${model%%:*}"
+        model="${model#*:}"
+    fi
+
+    # Get values from agent config
+    local agent_provider agent_model
+    agent_provider="$(echo "$agent_file" | yq -r '.model.provider // ""')"
+    agent_model="$(echo "$agent_file" | yq -r '.model.name // ""')"
+
+    # Set values with fallbacks
+    provider="${provider:-${agent_provider:-$AI_DEFAULT_PROVIDER}}"
+    model="${model:-$agent_model}"
+
+    # Return core config
+    printf '%s\n%s' "$provider" "$model"
+}
+
+# Unified task processor
+process_agent_prompt() {
+    local prompt="$1"
+    local agent_file="$2"  # Now expects actual file content
+    local system="$3"
+    
+    mapfile -t processed < <(process_tasks_in_prompt "$prompt" "$agent_file")
+    system+="${processed[0]}"
+    prompt="${processed[1]}"
+    
+    printf '%s\n%s' "$system" "$prompt"
 }

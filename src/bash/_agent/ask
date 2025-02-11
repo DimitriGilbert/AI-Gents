@@ -310,16 +310,47 @@ if [ "$_arg_stream" = "on" ]; then
 	stream_arg=(--stream)
 fi
 
-# Handle command through common function
-handle_agent_command \
-	"$_arg_agent" \
-	"$_arg_prompt" \
-	"ask" \
-	"$_arg_provider" \
-	"$_arg_model" \
-	"$_arg_system" \
-	"$_arg_api" \
-	"$_arg_api_key" \
-	"$_arg_conversation" \
-	"$_arg_log" \
-	"${stream_arg[@]}"
+# Get agent file once at start
+agent_file="$(get_agent_file "$_arg_agent")" || die "Could not find agent: $_arg_agent" 1
+
+# Get system prompt from agent config
+agent_system="$(echo "$agent_file" | yq -r '.system.prompt // ""')"
+[ -n "$agent_system" ] && _arg_system+="\n$agent_system"
+
+# Extract model parameters and format as --flags
+model_args=()
+provider=$(echo "$agent_file" | yq -r '.model.provider // ""')
+temperature=$(echo "$agent_file" | yq -r '.model.temperature // ""')
+model_name=$(echo "$agent_file" | yq -r '.model.name // ""')
+
+[[ -n "$temperature" ]] && model_args+=(--temperature "$temperature")
+[[ -n "$model_name" ]] && model_args+=(--model "$model_name")
+
+# Process tasks directly with agent file content
+mapfile -t processed < <(process_tasks_in_prompt "$_arg_prompt" "$agent_file")
+system+="${processed[0]}"
+prompt="${processed[1]}"
+
+# Get API key if needed
+api_key="${_arg_api_key:-$(get_provider_credential "$provider")}"
+
+# Build command array
+askCmd=("$_SCRIPT_DIR/../../../ai" ask)
+askCmd+=("${prompt}")
+
+[[ -n "$provider" ]] && askCmd+=(--provider "$provider")
+[[ -n "$_arg_model" ]] && askCmd+=(--model "$_arg_model")
+[[ -n "$_arg_system" ]] && askCmd+=(--system "$_arg_system")
+[[ -n "$_arg_api" ]] && askCmd+=(--api "$_arg_api")
+[[ -n "$api_key" ]] && askCmd+=(--api-key "$api_key")
+[[ -n "$_arg_conversation" ]] && askCmd+=(--conversation "$_arg_conversation")
+[[ -n "$_arg_log" ]] && askCmd+=(--log "$_arg_log")
+
+# Add model args and stream if present
+[[ ${#model_args[@]} -gt 0 ]] && askCmd+=("${model_args[@]}")
+[[ ${#stream_arg[@]} -gt 0 ]] && askCmd+=("${stream_arg[@]}")
+
+# echo "$prompt";
+# Execute command
+# 
+"${askCmd[@]}"

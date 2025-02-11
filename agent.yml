@@ -10,23 +10,7 @@ model:
 
 system:
   prompt: "You are AI-gent, a helpful AI assistant that provides clear and concise responses."
-  toolPrompt: |
-    You have a set of tools to use to help you with your tasks.
-    Use EXACTLY this JSON format **ONLY** for tool calls:
-    ```json
-    {
-      "tool_calls": [
-        {
-          "type":"function",
-          "function": {
-            "name":"<tool_name>",
-            "arguments":{<tool_arguments>}
-          }
-        }
-      ]
-    }
-    ```
-
+  
 # Agent settings
 settings:
   memory_window: 10
@@ -115,55 +99,3 @@ tasks:
       - Focus on benefits over features
       - Include technical specifications where relevant
 
-tools:
-  functions:
-    - name: "fs_list"
-      description: "List the files in a directory"
-      parameters:
-        type: "object"
-        properties:
-          directory:
-            type: "string"
-            description: "The directory to list the files from"
-            default: "."
-      returns:
-        type: "string"
-        description: "The list of files and directories in the directory"
-
-    - name: "fs_read"
-      description: "Read the contents of a file"
-      parameters:
-        type: "object"
-        properties:
-          file:
-            type: "string"
-            description: "The file to read"
-        required: ["file"]
-      returns:
-        type: "string"
-        description: "The contents of the file"
-
-    - name: "fs_write"
-      description: "Write to a file"
-      parameters:
-        type: "object"
-        properties:
-          file:
-            type: "string"
-            description: "The file to write to"
-          content:
-            type: "string"
-            description: "The content to write to the file"
-          mode:
-            type: "string"
-            description: "The mode to write the file in"
-            enum: ["w", "a"]
-            default: "w"
-          backup:
-            type: "boolean"
-            description: "Whether to backup the file before writing"
-            default: false
-        required: ["file", "content"]
-      returns:
-        type: "string"
-        description: "Success or error message"
