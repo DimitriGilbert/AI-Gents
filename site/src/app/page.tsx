@@ -27,37 +27,44 @@ export default async function HomePage() {
         </h1>
       </div>
       <div className="container flex flex-col items-center justify-center gap-4 p-4">
-        <h2>Gently AI-up your terminal and CLI apps</h2>
-        <h3>With (or without) your own agents</h3>
+        <h2>
+          Gently AI-up your terminal and{" "}
+          <span className="text-xl font-bold text-orange-500">CLI</span> apps
+        </h2>
+        <h3>With (or without) your own <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-red-500 dark:from-pink-500 dark:to-orange-500 font-bold">agents</span></h3>
       </div>
       <div className="flex-col-2 container flex gap-4 p-4">
         <div className="justify flex w-1/2 flex-col gap-4">
-          <h3 className="py-8 text-2xl font-bold">
-            A &ldquo;spec&rdquo; for agents
+          <h3 className="py-8 text-2xl font-bold text-center">
+            A &ldquo;spec&rdquo; for <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-red-500 dark:from-pink-500 dark:to-orange-500 font-bold">agents</span>
           </h3>
-          <p>AI-gents started as a format/spec/... for me to store my agents</p>
+          <p>AI-gents started as a format/spec/... for me to store my <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-red-500 dark:from-pink-500 dark:to-orange-500 font-bold">agents</span></p>
           <p>
-            See, everyone and their grand-mother do &lt;&lt;AGENTS&gt;&gt; now,
-          </p>
-          <p>and all these have their own proprietary way of doing it.</p>
-          <p>
-            I just want to store my agents in a simple way, that can be used by
-            any LLM.
-          </p>
-          <p>That is how it started...</p>
-          <h3 className="py-8 text-xl font-bold">What are agents ?</h3>
-          <p>
-            From all the marketing word salad BS we're earing, I would define an
-            agent as...
+            See, everyone and their grand-mother do &lt;&lt;<span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-red-500 dark:from-pink-500 dark:to-orange-500 font-bold">AGENTS</span>&gt;&gt; now,
+            and all these have their own proprietary way of doing it.
           </p>
           <p>
-            A fancy prompt... (or a set of prompt, that can be chained) tailored
-            to a specific task.
+            I just want to store my <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-red-500 dark:from-pink-500 dark:to-orange-500 font-bold">agents</span> in a simple way, and then use them
+            with any LLM. Is this too much ?!?!
+          </p>
+          <p>That is how it started...but first...</p>
+          <h3 className="py-4 text-xl font-bold">
+            What are <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-red-500 dark:from-pink-500 dark:to-orange-500 font-bold">agents</span> ? like,{" "}
+            <span className="text-2xl font-bold text-pink-500">REALLY ?</span> ?
+          </h3>
+          <p>
+            From all the marketing words salad BS we are force fed, I would
+            define an agent as...
+          </p>
+          <p>
+            A fancy prompt... (or a set of prompts, that can be chained)
+            tailored to a specific task.
           </p>
           <p>
             They might come with documents, tools and what not, the point
             remains, they're &ldquo;just&rdquo; a fancy prompt.
           </p>
+          <p>That does not seem that hard is it ? It is just...</p>
         </div>
         <div className="flex w-1/2 flex-col items-center justify-center gap-4">
           <Terminable
@@ -112,34 +119,34 @@ export default async function HomePage() {
                     <div>
                       <p>install AI-Gents:</p>
                       <p>
-                        <code className="dark:text-yellow-400 text-purple-200">
-                          --i, --shell-rc-file|--install-file
+                        <code className="text-purple-200 dark:text-yellow-400">
+                          -i, --shell-rc-file|--install-file
                           &lt;shell-rc-file&gt;
                         </code>
                         : where to put the source directive, repeatable
                       </p>
                       <p>
-                        <code className="dark:text-yellow-400 text-purple-200">
-                          --p, --default-provider &lt;default-provider&gt;
+                        <code className="text-purple-200 dark:text-yellow-400">
+                          -p, --default-provider &lt;default-provider&gt;
                         </code>
                         : default provider
                       </p>
                       <p>
-                        <code className="dark:text-yellow-400 text-purple-200">
-                          --c, --credential &lt;credential&gt;
+                        <code className="text-purple-200 dark:text-yellow-400">
+                          -c, --credential &lt;credential&gt;
                         </code>
                         : provider credential,
                         &lt;provider&gt;:&lt;credential&gt;, repeatable
                       </p>
                       <p>
-                        <code className="dark:text-yellow-400 text-purple-200">
+                        <code className="text-purple-200 dark:text-yellow-400">
                           --install-dependencies|--no-install-dependencies
                         </code>
                         : install dependencies, on by default (use
                         --no-install-dependencies to turn it off)
                       </p>
                       <p>
-                        <code className="dark:text-yellow-400 text-purple-200">
+                        <code className="text-purple-200 dark:text-yellow-400">
                           no-aliases: --no-deps,
                         </code>
                       </p>
@@ -157,32 +164,51 @@ export default async function HomePage() {
             <code className="text-sm text-gray-200">{agentConfig}</code>
           </pre>
         </div>
-        <div className="flex w-1/2 flex-col items-center justify-center gap-4">
-          <h3 className="py-8 text-xl font-bold">
-            So basically, a structured file to store text...
+        <div className="flex w-1/2 flex-col justify gap-4">
+          <h3 className="py-8 text-2xl font-bold text-center">
+            A text file to store structured data...
           </h3>
           <p>
-            I know, when put like that, it sounds **LAME** AF... it is... So
-            because of that, the fact that I was going to have to test it (the
-            agent file format) and because I do bash...
+            I know, when you put it like that, it sounds **
+            <span className="text-lg font-bold text-red-500">LAME</span>** AF...{" "}
+            <span className="text-lg font-bold text-pink-500">it is</span>...
           </p>
           <p>
-            I made a &ldquo;chat app&rdquo;, yuuup, guessed it, in bash (heyyyy,
+            So because of that, the fact that I was going to have to test it
+            (the agent file format) and because I do <span className="text-lg font-bold text-red-100 dark:text-violet-300">Bash</span>...
+          </p>
+          <p>
+            I made a &ldquo;chat app&rdquo;, yuuup, guessed it, in <span className="text-lg font-bold text-red-100 dark:text-violet-300">Bash</span> (heyyyy,
             what could possibly go wrong ? huuum ?? uuhhh... sh...)
           </p>
           <div>
             There are a few dependencies though,{" "}
-            <span className="text-lg font-bold">jq</span> and{" "}
-            <span className="text-lg font-bold">yq</span> for json/yaml,{" "}
-            <span className="text-lg font-bold">curl</span> (duh) and{" "}
-            <span className="text-lg font-bold">rlwrap</span> to butter up the
-            chat
+            <span className="rounded-md bg-gray-700 p-1 text-lg font-bold text-purple-200 dark:bg-transparent dark:text-yellow-400">
+              jq
+            </span>{" "}
+            and{" "}
+            <span className="rounded-md bg-gray-700 p-1 text-lg font-bold text-purple-200 dark:bg-transparent dark:text-yellow-400">
+              yq
+            </span>{" "}
+            for json/yaml,{" "}
+            <span className="rounded-md bg-gray-700 p-1 text-lg font-bold text-purple-200 dark:bg-transparent dark:text-yellow-400">
+              curl
+            </span>{" "}
+            (duh) and{" "}
+            <span className="rounded-md bg-gray-700 p-1 text-lg font-bold text-purple-200 dark:bg-transparent dark:text-yellow-400">
+              rlwrap
+            </span>{" "}
+            to butter up the chat
           </div>
           <h3 className="py-4 text-xl font-bold">
             What Could You Use It For ? Cause...
           </h3>
           <p>
-            I mean... Bash ? Like... What ? How ? why ?{" "}
+            I mean...{" "}
+            <span className="text-lg font-bold text-red-100 dark:text-violet-300">Bash</span> ?
+            Like... <span className="font-bold text-green-500">What</span> ?{" "}
+            <span className="font-bold text-yellow-500">How</span> ?{" "}
+            <span className="font-bold text-red-500">why</span> ?{" "}
             <span className="text-sm">Are things ok in my life ?</span>{" "}
             <span className="text-xs">
               Did my mom dropped me one too many times as a baby ?
@@ -197,7 +223,7 @@ export default async function HomePage() {
       </div>
       <div className="container flex gap-4 p-4 pt-16">
         <div className="justify flex w-1/2 flex-col gap-4">
-          <h3 className="pb-2 pt-4 text-xl font-bold">
+          <h3 className="py-8 text-2xl font-bold text-center">
             Ask or chat with an ai, in your terminal !
           </h3>
           <p>
@@ -206,23 +232,25 @@ export default async function HomePage() {
           </p>
           <p>
             For a quick AI fix, open a terminal,{" "}
-            <code className="dark:text-yellow-400 text-purple-200">
+            <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
               ai ask "something very important" --stream
             </code>
             , Boom, done.
           </p>
           <p>
             And if you need more than a single shot you are just an{" "}
-            <code className="dark:text-yellow-400 text-purple-200">ai chat "I need to talk"</code>{" "}
+            <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
+              ai chat "I need to talk"
+            </code>{" "}
             away
           </p>
           <p>
             In both case, you can choose the{" "}
-            <code className="dark:text-yellow-400 text-purple-200">
+            <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
               --model [ gpt-4 | claude-3.5 |deepseek | ... ]
             </code>{" "}
             you wish to have an interaction with and what
-            <code className="dark:text-yellow-400 text-purple-200">
+            <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
               {" "}
               --provider [ openrouter | openai | anthropic | ollama | ... ]
             </code>{" "}
@@ -230,11 +258,11 @@ export default async function HomePage() {
           </p>
           <p>
             If like me you have peculiar needs, you can always specify them as a{" "}
-            <code className="dark:text-yellow-400 text-purple-200">
+            <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
               --system "please reply only in latin, I am Rex"
             </code>
           </p>
-          <h3 className="pb-2 pt-4 text-xl font-bold">
+          <h3 className="py-4 text-xl font-bold">
             Once you are a regular, create an agent !
           </h3>
           <p>
@@ -243,7 +271,7 @@ export default async function HomePage() {
           </p>
           <p>
             Whatever the case, it is time for you to{" "}
-            <code className="dark:text-yellow-400 text-purple-200">
+            <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
               ai agent create a-fancy-agent
             </code>
             . It will then live in your $HOME dotfiles, so you can shape it as
@@ -411,8 +439,7 @@ The sky appears blue during sunrise and sunset when the sun's light passes throu
 In summary, the blue sky is predominantly due to Rayleigh scattering by small atmospheric particles, while darker skies result from variations in particle density and other factors like UV light absorption.`,
                   },
                   <div className="text-yellow-500">
-                    You &gt; It was a joke, I live in Britanny, it's grey here
-                    !
+                    You &gt; It was a joke, I live in Britanny, it's grey here !
                   </div>,
                   `AI >`,
                   {
@@ -490,7 +517,7 @@ In summary, the blue sky is primarily due to Rayleigh scattering by small atmosp
                 prompt: [
                   `# let's check if Maurice is better suited for some humor`,
                   `ai agent create Maurice --prompt "You are Maurice, a typical unpolite and rude parisian waiter." --provider lmstudio --model hermes-3-llama-3.2-3b`,
-                  `cat ~/.config/ai-gents/agents/Maurice.yml`,
+                  `cat ~/.config/ai-gents/<span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-red-500 dark:from-pink-500 dark:to-orange-500 font-bold">agents</span>/Maurice.yml`,
                 ],
                 output: (
                   <pre className="font-mono">
@@ -584,10 +611,10 @@ Mon recommandation pour le diner serait de manger un truc comme des escalopes à
             ]}
           />
         </div>
-        <div className="flex w-1/2 flex-col items-center justify-center gap-4">
-          <h3 className="text-2xl font-bold">Not just One prompt</h3>
+        <div className="flex w-1/2 flex-col justify gap-4">
+          <h3 className="py-8 text-2xl font-bold text-center">Not just One prompt</h3>
           <p>
-            Back on topic, Sometimes, you can have a nice &ldquo;base
+            Sometimes, you can have a nice &ldquo;base
             prompt&rdquo; for your agent, but you might want to make it modular
             ? Or add functionnalities ?
           </p>
@@ -597,24 +624,32 @@ Mon recommandation pour le diner serait de manger un truc comme des escalopes à
           </p>
           <p>
             The task prompt is just added to the system prompt when you invoke
-            the it. But how do you invoke said task one might ask ?!
+            it. But how do you invoke said task one might ask ?!
           </p>
           <p>
             Easy...{" "}
-            <code className="dark:text-yellow-400 text-purple-200">
+            <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
               ai agent ask Maurice &ldquo;#/task the-name-of-your-task;&rdquo;
             </code>
             , you might want to be careful though, Maurice is a handful !
           </p>
           <p>
+            You can use a <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
+              #/task ... ;
+            </code>{" "}
+            anywhere in your prompt, it will be removed before sending the
+            message
+          </p>
+          <p>
             Being in your terminal offers a perk or two. You know a command line
-            is also called a prompt, right ? What's preventing us from using
-            command in our prompts ?
+            is also called a prompt, right ? What's preventing us from using{" "}
+            <span className="text-xl font-bold text-orange-500">commands</span>{" "}
+            in our prompts ?
           </p>
           <p>
             NICHTSSSSS ! des clous, nada, nothing ! So you can do that anywhere
             when prompting your{" "}
-            <code className="dark:text-yellow-400 text-purple-200">
+            <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
               ai agent ask Maurice &ldquo;What file would you recommand for
               dinner ? #!/tree -I 'node_modules|cache|test_*';&rdquo;
             </code>
@@ -626,13 +661,19 @@ Mon recommandation pour le diner serait de manger un truc comme des escalopes à
         </div>
       </div>
       <div className="container flex gap-4 p-4 pt-16">
-        <div className="flex w-1/2 flex-col items-center justify-center gap-4">
-          <h3 className="text-2xl font-bold">What for ... ?</h3>
+        <div className="flex w-1/2 flex-col justify gap-4">
+          <h3 className="py-8 text-2xl font-bold text-center">What for ... ?</h3>
           <p>
             You might say I already have{" "}
             <Link href="https://openwebui.com/">openWebUi</Link> or{" "}
             <Link href="https://t3.chat/">T3.chat</Link> and that's true, but
-            can these add --ai to you CLI ?? Hu ? HUUU? !!
+            can these add{" "}
+            <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
+              --ai
+            </code>{" "}
+            to you{" "}
+            <span className="text-xl font-bold text-orange-500">CLI</span> ?? Hu
+            ? HUUU? !!
           </p>
           <p>
             I think <b>NOT</b> !
@@ -643,17 +684,21 @@ Mon recommandation pour le diner serait de manger un truc comme des escalopes à
             bit less cheap (spoiler alert, I am a cheap bearded individual...)
           </p>
           <p>
-            Aaaannnd, just like UI vs CLI usage for any task, you are way more
-            efficient, especially with completion ! Plus, you can't easily
-            script UI interactions, can you ? (ooohh I'll race ya and your
-            Playright !)
+            Aaaannnd, just like UI vs{" "}
+            <span className="text-xl font-bold text-orange-500">CLI</span> usage
+            for any task, you are way more efficient, especially with completion
+            ! Plus, you can't easily script UI interactions, can you ? (ooohh
+            I'll race ya and your Playright !)
           </p>
           <p>
             If you'd like an example you could give a look at{" "}
             <Link href="https://Butt3r.dev" target="_blank">
               ButT3r
             </Link>
-            , which is my wrapper around create-t3-app, and, it comes with --ai
+            , which is my wrapper around create-t3-app, and, it comes with{" "}
+            <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
+              --ai
+            </code>
             when creating pages, components or layouts ;).
           </p>
           <p>
@@ -733,7 +778,7 @@ Mon recommandation pour le diner serait de manger un truc comme des escalopes à
                   </div>,
                   <div>
                     <pre>
-                      <code className="dark:text-yellow-400 text-purple-200">{`To create a bash script that uses the provided parsing code and calls the 'ai ask' command, we can use the parsed arguments to analyze the log file and query AI. Here's how:
+                      <code className="">{`To create a bash script that uses the provided parsing code and calls the 'ai ask' command, we can use the parsed arguments to analyze the log file and query AI. Here's how:
                     
 '''bash
 # After all parsing is done...
@@ -813,7 +858,11 @@ Or not have an AI ready computer... ^^`,
                     >
                       <Button className="bg-orange-500">ButT3r</Button>
                     </Link>{" "}
-                    If you want your fix of CLI AI goodness !
+                    If you want your fix of{" "}
+                    <span className="text-xl font-bold text-orange-500">
+                      CLI
+                    </span>{" "}
+                    AI goodness !
                   </div>,
                 ],
               },

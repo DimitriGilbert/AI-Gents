@@ -757,6 +757,9 @@ if [ "$_arg_stream" == "on" ]; then
 					content="${content//\\t/$'\t'}"
 					content="${content//<think>/\\e[38;5;4m}"
 					content="${content//<\/think>/\\e[0m}"
+					# WTF moonshot ? why... you want to make people sad :(
+					content="${content//◁think▷/\\e[38;5;4m}"
+					content="${content//◁\/think▷/\\e[0m}"
 					printf '%b' "$content"
 					if [ "$_arg_log" != "" ]; then
 						printf '%b' "$content" >>"$_arg_log"

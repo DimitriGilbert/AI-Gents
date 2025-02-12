@@ -39,11 +39,13 @@ export default function RootLayout({
                   </Link>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <NavigationMenuLink
-                    className={`${navigationMenuTriggerStyle()} text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300`}
-                  >
-                    Docs
-                  </NavigationMenuLink>
+                  <Link href="/docs" legacyBehavior passHref>
+                    <NavigationMenuLink
+                      className={`${navigationMenuTriggerStyle()} text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300`}
+                    >
+                      Docs
+                    </NavigationMenuLink>
+                  </Link>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
                   <Link
