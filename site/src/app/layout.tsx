@@ -4,11 +4,9 @@ import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 import { ThemeProvider, ThemeToggle } from "~/components/theme-provider";
 import {
-  NavigationMenuContent,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-  NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "~/components/ui/navigation-menu";
 import { NavigationMenu } from "~/components/ui/navigation-menu";

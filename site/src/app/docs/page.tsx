@@ -28,9 +28,7 @@ type CommandType = {
 };
 
 // Define a type for the commands object
-type CommandsType = {
-  [key: string]: CommandType;
-};
+type CommandsType = Record<string, CommandType>;
 
 const commands: CommandsType = {
   'ai-ask': {

@@ -62,7 +62,7 @@ export default async function HomePage() {
           </p>
           <p>
             They might come with documents, tools and what not, the point
-            remains, they're &ldquo;just&rdquo; a fancy prompt.
+            remains, they&lsquo;re &ldquo;just&rdquo; a fancy prompt.
           </p>
           <p>That does not seem that hard is it ? It is just...</p>
         </div>
@@ -86,14 +86,14 @@ export default async function HomePage() {
                 prompt: [
                   "# Or...",
                   "# if you are allergic to proper tools, you can still download the zip, and unzip it with the command below",
-                  <div className="text-purple-300">
+                  <div key={Math.random()} className="text-purple-300">
                     curl -sSL
                     https://github.com/DimitriGilbert/ai-gents/archive/refs/heads/main.zip
-                    -o AI-Gents-main.zip && unzip AI-Gents-main.zip 'main/*' -d
+                    -o AI-Gents-main.zip && unzip AI-Gents-main.zip &lsquo;main/*&lsquo; -d
                     ai-gents && mv ai-gents/main/* ai-gents/ && rmdir
                     ai-gents/main,
                   </div>,
-                  <div className="text-yellow-500">
+                  <div key={Math.random()} className="text-yellow-500">
                     <Link href="https://github.com/DimitriGilbert/ai-gents/archive/refs/heads/main.zip">
                       <Button className="bg-orange-500 text-black">
                         Or download here
@@ -198,7 +198,7 @@ export default async function HomePage() {
             <span className="rounded-md bg-gray-700 p-1 text-lg font-bold text-purple-200 dark:bg-transparent dark:text-yellow-400">
               rlwrap
             </span>{" "}
-            to butter up the chat
+            (to butter up the chat)
           </div>
           <h3 className="py-4 text-xl font-bold">
             What Could You Use It For ? Cause...
@@ -216,7 +216,7 @@ export default async function HomePage() {
           </p>
           <p>
             Aaaaalll valid question (good enough thank you, and no she did not,
-            though she'd probably have said something along the lines of
+            though she&lsquo;d probably have said something along the lines of
             &ldquo;Why **Dropped** ?!?&rdquo;, ^^)
           </p>
         </div>
@@ -227,20 +227,20 @@ export default async function HomePage() {
             Ask or chat with an ai, in your terminal !
           </h3>
           <p>
-            I don't know about you, but I very often have at least one terminal
+            I don&lsquo;t know about you, but I very often have at least one terminal
             open
           </p>
           <p>
             For a quick AI fix, open a terminal,{" "}
             <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
-              ai ask "something very important" --stream
+              ai ask &ldquo;something very important&ldquo; --stream
             </code>
             , Boom, done.
           </p>
           <p>
             And if you need more than a single shot you are just an{" "}
             <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
-              ai chat "I need to talk"
+              ai chat &ldquo;I need to talk&ldquo;
             </code>{" "}
             away
           </p>
@@ -259,7 +259,7 @@ export default async function HomePage() {
           <p>
             If like me you have peculiar needs, you can always specify them as a{" "}
             <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
-              --system "please reply only in latin, I am Rex"
+              --system &ldquo;please reply only in latin, I am Rex&rdquo;
             </code>
           </p>
           <h3 className="py-4 text-xl font-bold">
@@ -339,8 +339,8 @@ The sky appears blue during sunrise and sunset when the sun's light passes throu
                   {
                     content: (
                       <div className="text-blue-500">
-                        Okay, so I'm trying to figure out why the sky is blue
-                        everywhere except in Britain and France where it's grey.
+                        Okay, so I&lsquo;m trying to figure out why the sky is blue
+                        everywhere except in Britain and France where it&lsquo;s grey.
                         Hmm, let me think about this step by step. First, I know
                         that when we talk about colors of light, things like
                         color, hue, wavelength—these are all related. Blue light
@@ -349,39 +349,39 @@ The sky appears blue during sunrise and sunset when the sun's light passes throu
                         in the sky? I remember hearing something about Rayleigh
                         scattering and Mie theory from my physics class. Maybe
                         those concepts explain why certain wavelengths scatter
-                        more than others. Wait, Rayleigh scattering—that's when
+                        more than others. Wait, Rayleigh scattering—that&lsquo;s when
                         shorter wavelengths scatter more, right? So if blue
                         light has a longer wavelength, it scatters less. That
-                        would mean that blue doesn't show up in the sky much,
+                        would mean that blue doesn&lsquo;t show up in the sky much,
                         making it appear blue. But then again, I think there are
                         other factors too. Like the amount of water vapor in the
                         air and the presence of particles like dust or small
                         molecules. Mie theory says that particles with certain
                         sizes scatter light differently based on their
                         wavelength. So if most of the atmosphere has larger
-                        particles (like dust), they'd scatter blue more than
+                        particles (like dust), they&lsquo;d scatter blue more than
                         smaller ones, causing blue to show up more often. But
-                        wait, I've heard about Rayleigh scattering for shorter
+                        wait, I&lsquo;ve heard about Rayleigh scattering for shorter
                         wavelengths and Mie for longer. So maybe the sky is
                         primarily blue because a lot of small particles are
                         present. But then, in places like Britain and France,
-                        which have a darker sky, that's strange. Why would they
-                        see less blue? Maybe it's a mix of different gases or
-                        something else affecting the light differently. I'm not
-                        sure if that's related to Rayleigh scattering at all.
+                        which have a darker sky, that&lsquo;s strange. Why would they
+                        see less blue? Maybe it&lsquo;s a mix of different gases or
+                        something else affecting the light differently. I&lsquo;m not
+                        sure if that&lsquo;s related to Rayleigh scattering at all.
                         There could be other factors, like temperature changes
                         causing some gases to absorb more blue. Oh, and UV
                         light—blue is in the ultraviolet range. So maybe when we
                         look up at the sky, blue UV is reaching us less because
                         people are more tired from sleep or something? But I
-                        don't think that's the main reason. Still, it could be
+                        don&lsquo;t think that&lsquo;s the main reason. Still, it could be
                         contributing to the darker color we observe. Wait a
-                        second, I've read somewhere about the greenhouse effect
+                        second, I&lsquo;ve read somewhere about the greenhouse effect
                         in the Northern Lights. Maybe the cold air causing ice
                         crystals to form affects the light differently. Or
-                        perhaps the Earth's rotation changes how sunlight hits
-                        certain parts of the sky. I'm also thinking about the
-                        atmosphere's composition and its variations across
+                        perhaps the Earth&lsquo;s rotation changes how sunlight hits
+                        certain parts of the sky. I&lsquo;m also thinking about the
+                        atmosphere&lsquo;s composition and its variations across
                         different regions. In places where there are more
                         particles or dust, you get a darker blue because
                         Rayleigh scattering is less effective. But in places
@@ -389,13 +389,13 @@ The sky appears blue during sunrise and sunset when the sun's light passes throu
                         scatters differently, making it appear grey instead.
                         Another thought: space pollution—like cosmic rays
                         hitting the atmosphere—and how they scatter light. Maybe
-                        that's more relevant to satellites, but I'm not sure if
+                        that&lsquo;s more relevant to satellites, but I&lsquo;m not sure if
                         it affects everyday skies in these countries. I should
                         also consider atmospheric conditions during the day
                         versus night. Blue sky is typically during daylight when
                         sunlight scatters less and most Rayleigh scattering is
                         dominant. But at sunrise or sunset, especially in
-                        countries with darker skies like France, maybe there's
+                        countries with darker skies like France, maybe there&lsquo;s
                         more reflection off particles or gases rather than
                         scattering. So putting it all together: the sky is blue
                         because a lot of small particles scatter Rayleigh light,
@@ -404,17 +404,17 @@ The sky appears blue during sunrise and sunset when the sun's light passes throu
                         atmosphere (like Britain and France), this effect is
                         less pronounced, and other factors like particle density
                         or UV radiation cause the sky to look grey instead.
-                        Wait, but I'm still a bit confused about how exactly the
+                        Wait, but I&lsquo;m still a bit confused about how exactly the
                         particles in the air affect the wavelength of light. If
-                        more larger particles are present, wouldn't that mean
+                        more larger particles are present, wouldn&lsquo;t that mean
                         less Rayleigh scattering, resulting in more blue? Yes,
                         that makes sense. So without enough small particles, the
                         blue gets diluted out, leaving a grey sky. Also, UV
                         light—blue is part of the ultraviolet spectrum. Maybe
-                        the Earth's UV radiation affects the atmosphere
+                        the Earth&lsquo;s UV radiation affects the atmosphere
                         differently or causes some absorption that contributes
-                        to the observed color. Or perhaps it's related to how
-                        our eyes perceive different wavelengths, but I'm not
+                        to the observed color. Or perhaps it&lsquo;s related to how
+                        our eyes perceive different wavelengths, but I&lsquo;m not
                         sure about that connection. I guess the main reasons are
                         Rayleigh scattering due to small particles and
                         variations in atmospheric composition between these
@@ -438,31 +438,31 @@ The sky appears blue during sunrise and sunset when the sun's light passes throu
 
 In summary, the blue sky is predominantly due to Rayleigh scattering by small atmospheric particles, while darker skies result from variations in particle density and other factors like UV light absorption.`,
                   },
-                  <div className="text-yellow-500">
-                    You &gt; It was a joke, I live in Britanny, it's grey here !
+                  <div key={Math.random()} className="text-yellow-500">
+                    You &gt; It was a joke, I live in Britanny, it&lsquo;s grey here !
                   </div>,
                   `AI >`,
                   {
                     delay: 1500,
                     content: (
                       <div className="text-blue-500">
-                        Okay, so I'm trying to figure out why the sky is blue
+                        Okay, so I&lsquo;m trying to figure out why the sky is blue
                         everywhere except in places like Britain and France
-                        where it's grey. I remember learning about Rayleigh
+                        where it&lsquo;s grey. I remember learning about Rayleigh
                         scattering and Mie theory from physics class, but those
                         terms are a bit confusing to me. Rayleigh scattering
                         says that shorter wavelengths of light (like blue)
                         scatter more than longer ones (red or green). So if the
-                        sky is blue, wouldn't that mean less scattered blue
+                        sky is blue, wouldn&lsquo;t that mean less scattered blue
                         light? That seems odd. Maybe instead, it means more
                         scattered red and green, making the sky appear grey?
-                        Then there's Mie theory, which I think has something to
+                        Then there&lsquo;s Mie theory, which I think has something to
                         do with how particles in the atmosphere scatter light.
                         If most of the atmosphere had larger particles (like
                         dust settles or something), those would scatter blue
-                        less because they're bigger. That would make the sky
+                        less because they&lsquo;re bigger. That would make the sky
                         appear more blue, but that contradicts what I know about
-                        Britain and France having a grey sky. Wait, maybe it's
+                        Britain and France having a grey sky. Wait, maybe it&lsquo;s
                         not just about the size of the particles. There are also
                         variations in atmospheric composition. In places with
                         more small particles like dust, those particles scatter
@@ -471,13 +471,13 @@ In summary, the blue sky is predominantly due to Rayleigh scattering by small at
                         does space pollution cause this? Maybe cosmic rays hit
                         satellites and particles, affecting sunlight that
                         reaches Earth. Or perhaps solar activity affects how UV
-                        light scatters differently in different regions. I'm
+                        light scatters differently in different regions. I&lsquo;m
                         also thinking about UV radiation. Blue is part of the
-                        ultraviolet range, so if there's more UV light reaching
+                        ultraviolet range, so if there&lsquo;s more UV light reaching
                         Earth, it could cause some absorption or reflection on
                         particles, contributing to a slightly different color
                         observed. But then why is space pollution considered a
-                        joke? Maybe it's not related and was just an oversight
+                        joke? Maybe it&lsquo;s not related and was just an oversight
                         in the explanation earlier. So, putting this together:
                         The sky is blue because of Rayleigh scattering by small
                         atmospheric particles (like dust), making most of the
@@ -642,7 +642,7 @@ Mon recommandation pour le diner serait de manger un truc comme des escalopes à
           </p>
           <p>
             Being in your terminal offers a perk or two. You know a command line
-            is also called a prompt, right ? What's preventing us from using{" "}
+            is also called a prompt, right ? What&lsquo;s preventing us from using{" "}
             <span className="text-xl font-bold text-orange-500">commands</span>{" "}
             in our prompts ?
           </p>
@@ -651,7 +651,7 @@ Mon recommandation pour le diner serait de manger un truc comme des escalopes à
             when prompting your{" "}
             <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
               ai agent ask Maurice &ldquo;What file would you recommand for
-              dinner ? #!/tree -I 'node_modules|cache|test_*';&rdquo;
+              dinner ? #!/tree -I &lsquo;node_modules|cache|test_*&lsquo;;&rdquo;
             </code>
           </p>
           <p>
@@ -666,7 +666,7 @@ Mon recommandation pour le diner serait de manger un truc comme des escalopes à
           <p>
             You might say I already have{" "}
             <Link href="https://openwebui.com/">openWebUi</Link> or{" "}
-            <Link href="https://t3.chat/">T3.chat</Link> and that's true, but
+            <Link href="https://t3.chat/">T3.chat</Link> and that&lsquo;s true, but
             can these add{" "}
             <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
               --ai
@@ -687,11 +687,11 @@ Mon recommandation pour le diner serait de manger un truc comme des escalopes à
             Aaaannnd, just like UI vs{" "}
             <span className="text-xl font-bold text-orange-500">CLI</span> usage
             for any task, you are way more efficient, especially with completion
-            ! Plus, you can't easily script UI interactions, can you ? (ooohh
-            I'll race ya and your Playright !)
+            ! Plus, you can&lsquo;t easily script UI interactions, can you ? (ooohh
+            I&lsquo;ll race ya and your Playright !)
           </p>
           <p>
-            If you'd like an example you could give a look at{" "}
+            If you&lsquo;d like an example you could give a look at{" "}
             <Link href="https://Butt3r.dev" target="_blank">
               ButT3r
             </Link>
@@ -737,46 +737,46 @@ Mon recommandation pour le diner serait de manger un truc comme des escalopes à
     --stream 
     `,
                 output: [
-                  <div className="text-blue-500">
+                  <div key={Math.random()} className="text-blue-500">
                     Okay, I need to figure out how to create a bash script that
                     uses the provided parsing code to call another tool called
-                    'ai ask'. The user has given me two blocks of code: one is
+                    &lsquo;ai ask&lsquo;. The user has given me two blocks of code: one is
                     the existing parsing script and the other is the help
-                    message for the 'ai ask' command. My task is to combine
-                    these so that after parsing the arguments, I can call 'ai
-                    ask' with appropriate options. First, looking at the
+                    message for the &lsquo;ai ask&lsquo; command. My task is to combine
+                    these so that after parsing the arguments, I can call &lsquo;ai
+                    ask&lsquo; with appropriate options. First, looking at the
                     provided parsing code, it handles several options like
                     --from-line, --to-line, --model, and --provider. The user
                     wants to use existing options from this script to query AI
                     for analysis. So, the main goal is to extract lines from an
                     error log based on the given options and then pass that data
-                    to 'ai ask'. I'll start by thinking about how to process the
+                    to &lsquo;ai ask&lsquo;. I&lsquo;ll start by thinking about how to process the
                     error file. The script already parses _arg_error_file, so I
                     can use that directly. Next, I need to handle the
                     --from-line and --to-line arguments to extract specific
                     lines from the error-file. Once the lines are extracted, I
                     should format them into a coherent prompt for the AI. Maybe
-                    something like "Analyze this log entry: ..." followed by the
-                    content. Now, I'll consider how to call 'ai ask'. The help
+                    something like &ldquo;Analyze this log entry: ...&ldquo; followed by the
+                    content. Now, I&lsquo;ll consider how to call &lsquo;ai ask&lsquo;. The help
                     message shows various options, but for this task, the
                     essential ones are --model and --provider, which are already
                     parsed from the script. Additionally, I can include
                     --api-key if necessary, perhaps using an environment
                     variable for security. I should also handle cases where
                     from-line or to-line might not be provided. If from-line
-                    isn't set, I'll default to starting at line 1, and if
-                    to-line isn't set, go until the end of the file. Putting it
-                    all together, after parsing, I'll read the error file,
+                    isn&lsquo;t set, I&lsquo;ll default to starting at line 1, and if
+                    to-line isn&lsquo;t set, go until the end of the file. Putting it
+                    all together, after parsing, I&lsquo;ll read the error file,
                     extract the relevant lines, format them into a prompt, and
-                    then execute 'ai ask' with the necessary arguments. I also
+                    then execute &lsquo;ai ask&lsquo; with the necessary arguments. I also
                     need to ensure that the script exits properly after calling
-                    'ai ask', so I'll include an exit 0 after the execution.
+                    &lsquo;ai ask&lsquo;, so I&lsquo;ll include an exit 0 after the execution.
                     Finally, I should test for any potential issues, like
                     missing files or invalid line numbers, but since the parsing
-                    code already handles some errors, perhaps I don't need to
+                    code already handles some errors, perhaps I don&lsquo;t need to
                     add more unless required.
                   </div>,
-                  <div>
+                  <div key={Math.random()}>
                     <pre>
                       <code className="">{`To create a bash script that uses the provided parsing code and calls the 'ai ask' command, we can use the parsed arguments to analyze the log file and query AI. Here's how:
                     
@@ -839,7 +839,7 @@ Or not have an AI ready computer... ^^`,
               },
               {
                 prompt: [
-                  <div>
+                  <div key={Math.random()}>
                     I guess{" "}
                     <Link
                       href="https://github.com/DimitriGilbert/parseArger"
@@ -850,7 +850,7 @@ Or not have an AI ready computer... ^^`,
                     is getting the <span className="text-pink-300">--ai</span>{" "}
                     treatment next !
                   </div>,
-                  <div>
+                  <div key={Math.random()}>
                     In the mean time you can still check out{" "}
                     <Link
                       href="https://github.com/DimitriGilbert/Butt3r"

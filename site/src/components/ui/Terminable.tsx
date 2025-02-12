@@ -93,7 +93,7 @@ export default function Terminable({
 
   // Calculate typing delay with useMemo
   const calculateTypingDelay = useMemo(() => {
-    return (baseSpeed: number, randomFactor: number = 0) => {
+    return (baseSpeed: number, randomFactor = 0) => {
       const randomVariation = Math.random() * (baseSpeed * (randomFactor / 100));
       return Math.max(10, baseSpeed + (Math.random() > 0.5 ? randomVariation : -randomVariation));
     };
