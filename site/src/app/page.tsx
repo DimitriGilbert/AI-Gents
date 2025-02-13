@@ -257,7 +257,7 @@ export default async function HomePage() {
             to use.
           </p>
           <p>
-            If like me you have peculiar needs, you can always specify them as a{" "}
+            If you have peculiar needs, you can always specify them as a{" "}
             <code className="rounded-md bg-gray-700 p-1 text-purple-200 dark:bg-transparent dark:text-yellow-400">
               --system &ldquo;please reply only in latin, I am Rex&rdquo;
             </code>
@@ -845,15 +845,15 @@ Or not have an AI ready computer... ^^`,
                       href="https://github.com/DimitriGilbert/parseArger"
                       target="_blank"
                     >
-                      <Button className="bg-purple-500">ParseArger</Button>
+                      <Button className="bg-purple-500 text-white">ParseArger</Button>
                     </Link>{" "}
-                    is getting the <span className="text-pink-300">--ai</span>{" "}
+                    is getting the <span className="text-pink-300 font-bold">--ai</span>{" "}
                     treatment next !
                   </div>,
                   <div key={Math.random()}>
                     In the mean time you can still check out{" "}
                     <Link
-                      href="https://github.com/DimitriGilbert/Butt3r"
+                      href="https://butt3r.dev"
                       target="_blank"
                     >
                       <Button className="bg-orange-500">ButT3r</Button>
