@@ -153,7 +153,7 @@ provider_format_tool_result() {
     local tool_name="$2"
     local result="$3"
     # Anthropic uses role: "user" with tool_result content block
-    jq -n \
+    jq -n -c \
         --arg id "$tool_call_id" \
         --arg content "$result" \
         '{role: "user", content: [{type: "tool_result", tool_use_id: $id, content: $content}]}'
@@ -168,7 +168,7 @@ provider_format_assistant_message() {
     # Anthropic response has .content array with different block types
     # - Text content: blocks with type: "text" (combine all)
     # - Tool calls: blocks with type: "tool_use" (convert to standard format)
-    echo "$response" | jq '
+    echo "$response" | jq -c '
         {
             role: "assistant",
             content: (

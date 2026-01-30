@@ -180,7 +180,7 @@ provider_format_tool_result() {
 
     # OpenAI format: {"role": "tool", "tool_call_id": "...", "content": "..."}
     # tool_name is not used in OpenAI format (ID is used for matching)
-    jq -n \
+    jq -n -c \
         --arg id "$tool_call_id" \
         --arg content "$result" \
         '{role: "tool", tool_call_id: $id, content: $content}'
@@ -194,7 +194,7 @@ provider_format_assistant_message() {
 
     # OpenAI response path: .choices[0].message
     # Extract content and tool_calls, normalize to standard format
-    echo "$response" | jq '
+    echo "$response" | jq -c '
         .choices[0].message |
         {
             role: "assistant",

@@ -205,7 +205,7 @@ provider_format_tool_result() {
     local tool_name="$2"
     local result="$3"
     # Default: OpenAI format
-    jq -n --arg id "$tool_call_id" --arg content "$result" '{role: "tool", tool_call_id: $id, content: $content}'
+    jq -n -c --arg id "$tool_call_id" --arg content "$result" '{role: "tool", tool_call_id: $id, content: $content}'
 }
 
 # Format assistant message from provider response for conversation history

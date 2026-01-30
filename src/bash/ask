@@ -718,7 +718,7 @@ run_tool_loop() {
 		
 		if [[ -z "$has_tools" ]] || [[ "$has_tools" == "[]" ]]; then
 			# No tool calls - we have final response
-			final_response=$(echo "$response" | jq -r '.choices[0].message.content // ""')
+			final_response=$(provider_parse_response "$response")
 			rm -f "$payload_file"
 			break
 		fi
@@ -803,7 +803,7 @@ process_function_call() {
 	if [[ -z "$_arg_conversation" ]] && [[ -f "$conversation_file" ]]; then
 		# If no existing conversation, add user message first
 		local user_msg
-		user_msg=$(jq -n --arg content "$_arg_prompt" '{role: "user", content: $content}')
+		user_msg=$(jq -n -c --arg content "$_arg_prompt" '{role: "user", content: $content}')
 		printf '%s\n' "$user_msg" >> "$conversation_file"
 	fi
 	
