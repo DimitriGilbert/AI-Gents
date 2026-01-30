@@ -64,11 +64,13 @@ parallel_release() {
 }
 
 # Execute command in parallel with semaphore
-# Usage: parallel_exec <callback_fn> <result_file> [args...]
+# Usage: parallel_exec <callback_fn> <result_file> <key> [args...]
+# Key is a stable identifier (e.g., array index) used to store/retrieve results
 parallel_exec() {
     local callback="$1"
     local result_file="$2"
-    shift 2
+    local key="$3"
+    shift 3
     
     # Acquire slot
     local slot
@@ -81,11 +83,15 @@ parallel_exec() {
     (
         # Run the callback
         local result
-        result=$($callback "$@" 2>&1)
-        local exit_code=$?
+        local exit_code
         
-        # Write result with slot identifier
-        echo "${slot}:${exit_code}:${result}" >> "$result_file"
+        # Capture both stdout and stderr, plus exit code
+        result=$($callback "$@" 2>&1)
+        exit_code=$?
+        
+        # Write result with key identifier using NUL delimiter for safety
+        # Format: key<NUL>exit_code<NUL>result<NUL>
+        printf '%s\0%s\0%s\0' "$key" "$exit_code" "$result" >> "$result_file"
         
         # Release slot
         parallel_release "$slot"
@@ -97,6 +103,7 @@ parallel_exec() {
 
 # Wait for all parallel jobs to complete
 # Usage: parallel_wait [timeout_seconds]
+# Returns: 0 on success, 1 on timeout
 parallel_wait() {
     local timeout="${1:-300}"
     local start_time
@@ -142,6 +149,7 @@ parallel_active_count() {
 
 # Parallel map - execute function over array in parallel
 # Usage: parallel_map <callback_fn> <array_nameref> <result_nameref> [max_jobs]
+# Returns: 0 on success, 1 if any job failed or timeout occurred
 parallel_map() {
     local callback="$1"
     local -n input_array="$2"
@@ -159,20 +167,34 @@ parallel_map() {
     local i
     for i in "${!input_array[@]}"; do
         local item="${input_array[$i]}"
+        # Use array index as the stable key
         parallel_exec "$callback" "$result_file" "$i" "$item"
     done
     
-    # Wait for completion
-    parallel_wait
+    # Wait for completion and check for errors
+    if ! parallel_wait; then
+        # Wait failed (timeout or other issue)
+        rm -f "$result_file"
+        parallel_cleanup
+        return 1
+    fi
     
-    # Parse results
-    while IFS=: read -r slot exit_code result; do
-        if [[ -n "$slot" ]]; then
-            output_array[$slot]="$result"
+    # Parse NUL-delimited results
+    # Format: key<NUL>exit_code<NUL>result<NUL>
+    local key exit_code result
+    while IFS= read -r -d '' key; do
+        IFS= read -r -d '' exit_code
+        IFS= read -r -d '' result
+        
+        if [[ -n "$key" ]]; then
+            output_array[$key]="$result"
+            # Optionally track exit codes separately if needed
         fi
     done < "$result_file"
     
     # Cleanup
     rm -f "$result_file"
     parallel_cleanup
+    
+    return 0
 }

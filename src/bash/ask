@@ -581,6 +581,7 @@ process_function_call() {
 		[ "$_arg_structured_outputs" != "" ] && ask_cmd+=(--structured_outputs "$_arg_structured_outputs")
 		[ "$_arg_log" != "" ] && ask_cmd+=(--log "$_arg_log")
 		[ "$_arg_stream" == "on" ] && ask_cmd+=(--stream)
+		[ "$_arg_safe_mode" == "on" ] && ask_cmd+=(--safe-mode)
 		ask_cmd+=(--conversation "$conversation_file")
 
 		# Execute the follow-up request
@@ -630,7 +631,7 @@ if [ "$_arg_safe_mode" == "on" ]; then
 	fi
 else
 	# First-time command execution warning
-	show_command_safety_warning
+	show_command_safety_warning "$_arg_prompt"
 fi
 
 # Extract commands between #!/ and ; from user prompt with blacklist filtering
@@ -663,13 +664,14 @@ done
 if [ "${#_arg_prompt_cmds[@]}" -gt 0 ]; then
 	for i in "${!_arg_prompt_cmds[@]}"; do
 		match="${_prompt_cmd_matches[$i]}"
+		full_cmd="${_arg_prompt_cmds[$i]}"
 		
 		# Parse the command and its arguments properly
-		read -ra _tmpCmd <<< "$(parse_command "${_arg_prompt_cmds[$i]}")"
+		read -ra _tmpCmd <<< "$(parse_command "$full_cmd")"
 		
-		# Double-check blacklist (in case of injection)
-		if ! filter_command "${_tmpCmd[0]}"; then
-			log "Command blocked: ${_tmpCmd[0]}" -1
+		# Double-check blacklist using full command string (not just command name)
+		if ! filter_command "$full_cmd"; then
+			log "Command blocked: $full_cmd" -1
 			_arg_prompt="${_arg_prompt//$match/ [BLOCKED]}"
 			continue
 		fi
