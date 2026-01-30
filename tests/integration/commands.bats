@@ -92,15 +92,15 @@ teardown() {
     [[ -d "${TMPDIR:-/tmp}/ai-gents-conn" ]]
 }
 
-@test "api library: builds curl command with pooling" {
+`@test` "api library: builds curl command with pooling" {
     source_lib "api"
     api_init_pool
     
     local curl_args=()
-    run api_curl_cmd "https://api.openai.com/v1/chat/completions" curl_args
+    api_curl_cmd "https://api.openai.com/v1/chat/completions" curl_args
     
     # Check that curl_args was populated
-    [[ ${#curl_args[@]} -gt 0 ]]
+    [[ ${`#curl_args`[@]} -gt 0 ]]
     
     # Check for expected flags
     [[ "${curl_args[*]}" == *"keepalive-time"* ]]
