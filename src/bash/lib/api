@@ -38,15 +38,18 @@ api_curl_cmd() {
     conn_id="$(_api_get_conn_id "$endpoint")"
     local cookie_jar="$_API_CONN_POOL_DIR/${conn_id}.jar"
     
+    # Enhanced connection pooling for HTTP keep-alive
     curl_args=(
         -s  # silent
         -X POST
         -H "Content-Type: application/json"
+        -H "Connection: keep-alive"
         --cookie-jar "$cookie_jar"
         --cookie "$cookie_jar"
-        --keepalive-time 60
+        --keepalive-time 120
         --max-time 300
         --retry 0  # We handle retries manually
+        --http1.1  # Force HTTP/1.1 for better keep-alive compatibility
     )
 }
 
@@ -170,4 +173,106 @@ api_pool_stats() {
     fi
     echo "Active connections: $conn_count"
     echo "Pool directory: $_API_CONN_POOL_DIR"
+}
+
+# ============================================================================
+# Streaming Optimizer - 16ms batching for 60fps target
+# ============================================================================
+
+# Target frame time for 60fps: ~16ms
+_STREAM_BATCH_INTERVAL=16000000  # 16ms in nanoseconds
+
+# Buffer for batched content
+_stream_buffer=""
+_last_flush_time=0
+
+# Initialize streaming optimizer
+stream_optimizer_init() {
+    _stream_buffer=""
+    _last_flush_time=$(date +%s%N)
+}
+
+# Add content to buffer
+# Usage: stream_buffer_add <content>
+stream_buffer_add() {
+    local content="$1"
+    _stream_buffer+="$content"
+}
+
+# Check if it's time to flush (60fps = ~16ms)
+# Usage: stream_should_flush
+stream_should_flush() {
+    local current_time
+    current_time=$(date +%s%N)
+    local elapsed=$((current_time - _last_flush_time))
+    
+    [[ $elapsed -ge $_STREAM_BATCH_INTERVAL ]]
+}
+
+# Flush buffered content
+# Usage: stream_buffer_flush <output_callback>
+stream_buffer_flush() {
+    local callback="$1"
+    
+    if [[ -n "$_stream_buffer" ]]; then
+        $callback "$_stream_buffer"
+        _stream_buffer=""
+        _last_flush_time=$(date +%s%N)
+    fi
+}
+
+# Optimized streaming request with 16ms batching
+# Usage: api_request_stream_optimized <endpoint> <payload_file> <api_key> <content_callback>
+# content_callback receives batched content every ~16ms
+api_request_stream_optimized() {
+    local endpoint="$1"
+    local payload_file="$2"
+    local api_key="$3"
+    local content_callback="$4"
+    local parse_fn="${5:-provider_parse_stream_chunk}"
+    
+    # Initialize optimizer
+    stream_optimizer_init
+    
+    # Build base curl command
+    local curl_base=()
+    api_curl_cmd "$endpoint" curl_base
+    
+    # Add auth if provided
+    if [[ -n "$api_key" ]]; then
+        curl_base+=(-H "Authorization: Bearer ${api_key}")
+    fi
+    
+    # Add payload and streaming options
+    curl_base+=(-d "@${payload_file}")
+    curl_base+=(-N)  # No buffer for streaming
+    curl_base+=("$endpoint")
+    
+    # Execute and process stream with batching
+    "${curl_base[@]}" 2>/dev/null | while IFS= read -r line || [[ -n "$line" ]]; do
+        # Parse SSE data
+        if [[ "${line:0:5}" == "data:" ]]; then
+            local data="${line#data: }"
+            
+            if [[ "$data" != "" && "$data" != "[DONE]" ]]; then
+                # Parse content from chunk
+                local content
+                content=$($parse_fn "$data" 2>/dev/null)
+                
+                if [[ -n "$content" ]]; then
+                    stream_buffer_add "$content"
+                    
+                    # Flush if we've hit the 16ms target
+                    if stream_should_flush; then
+                        stream_buffer_flush "$content_callback"
+                    fi
+                fi
+            fi
+        fi
+    done
+    
+    # Final flush of any remaining content
+    stream_buffer_flush "$content_callback"
+    
+    return "${PIPESTATUS[0]}"
 }

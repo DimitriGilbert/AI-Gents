@@ -1,0 +1,178 @@
+#!/bin/bash
+#
+# Parallel processing utilities for AI-Gents
+# Semaphore-based concurrent execution
+#
+
+# Semaphore configuration
+_PARALLEL_MAX_JOBS=4
+_PARALLEL_SEMAPHORE_DIR="${TMPDIR:-/tmp}/ai-gents-sem"
+
+# Initialize semaphore system
+parallel_init() {
+    local max_jobs="${1:-$_PARALLEL_MAX_JOBS}"
+    _PARALLEL_MAX_JOBS="$max_jobs"
+    
+    # Create semaphore directory
+    mkdir -p "$_PARALLEL_SEMAPHORE_DIR"
+    
+    # Clean old semaphores
+    rm -f "$_PARALLEL_SEMAPHORE_DIR"/*.sem 2>/dev/null || true
+}
+
+# Acquire a semaphore slot (blocking)
+# Usage: parallel_acquire [timeout_seconds]
+parallel_acquire() {
+    local timeout="${1:-60}"
+    local start_time
+    start_time=$(date +%s)
+    local slot
+    
+    while true; do
+        # Find an available slot
+        for ((slot=0; slot<_PARALLEL_MAX_JOBS; slot++)); do
+            local sem_file="$_PARALLEL_SEMAPHORE_DIR/${slot}.sem"
+            
+            # Try to acquire slot atomically
+            if (set -o noclobber; echo "$$" > "$sem_file" 2>/dev/null); then
+                echo "$slot"
+                return 0
+            fi
+        done
+        
+        # Check timeout
+        local current_time
+        current_time=$(date +%s)
+        if [[ $((current_time - start_time)) -ge $timeout ]]; then
+            return 1
+        fi
+        
+        # Small delay before retry
+        sleep 0.01
+    done
+}
+
+# Release a semaphore slot
+# Usage: parallel_release <slot_number>
+parallel_release() {
+    local slot="$1"
+    local sem_file="$_PARALLEL_SEMAPHORE_DIR/${slot}.sem"
+    
+    if [[ -f "$sem_file" ]]; then
+        rm -f "$sem_file"
+    fi
+}
+
+# Execute command in parallel with semaphore
+# Usage: parallel_exec <callback_fn> <result_file> [args...]
+parallel_exec() {
+    local callback="$1"
+    local result_file="$2"
+    shift 2
+    
+    # Acquire slot
+    local slot
+    if ! slot=$(parallel_acquire); then
+        log "Failed to acquire parallel slot" -2
+        return 1
+    fi
+    
+    # Execute in background
+    (
+        # Run the callback
+        local result
+        result=$($callback "$@" 2>&1)
+        local exit_code=$?
+        
+        # Write result with slot identifier
+        echo "${slot}:${exit_code}:${result}" >> "$result_file"
+        
+        # Release slot
+        parallel_release "$slot"
+    ) &
+    
+    # Return immediately (background job continues)
+    return 0
+}
+
+# Wait for all parallel jobs to complete
+# Usage: parallel_wait [timeout_seconds]
+parallel_wait() {
+    local timeout="${1:-300}"
+    local start_time
+    start_time=$(date +%s)
+    
+    while true; do
+        # Count active semaphores
+        local active_count
+        active_count=$(find "$_PARALLEL_SEMAPHORE_DIR" -name "*.sem" -type f 2>/dev/null | wc -l)
+        
+        # Check if all slots are free
+        if [[ $active_count -eq 0 ]]; then
+            # Also check for any remaining background jobs
+            if ! jobs -r | grep -q .; then
+                return 0
+            fi
+        fi
+        
+        # Check timeout
+        local current_time
+        current_time=$(date +%s)
+        if [[ $((current_time - start_time)) -ge $timeout ]]; then
+            log "Parallel wait timeout" -2
+            return 1
+        fi
+        
+        # Small delay
+        sleep 0.05
+    done
+}
+
+# Cleanup semaphore system
+parallel_cleanup() {
+    if [[ -d "$_PARALLEL_SEMAPHORE_DIR" ]]; then
+        rm -rf "$_PARALLEL_SEMAPHORE_DIR"
+    fi
+}
+
+# Get number of active parallel jobs
+parallel_active_count() {
+    find "$_PARALLEL_SEMAPHORE_DIR" -name "*.sem" -type f 2>/dev/null | wc -l
+}
+
+# Parallel map - execute function over array in parallel
+# Usage: parallel_map <callback_fn> <array_nameref> <result_nameref> [max_jobs]
+parallel_map() {
+    local callback="$1"
+    local -n input_array="$2"
+    local -n output_array="$3"
+    local max_jobs="${4:-$_PARALLEL_MAX_JOBS}"
+    
+    # Initialize
+    parallel_init "$max_jobs"
+    
+    # Create temp file for results
+    local result_file
+    result_file=$(TMPDIR="${TMPDIR:-/tmp}" mktemp)
+    
+    # Execute all tasks
+    local i
+    for i in "${!input_array[@]}"; do
+        local item="${input_array[$i]}"
+        parallel_exec "$callback" "$result_file" "$i" "$item"
+    done
+    
+    # Wait for completion
+    parallel_wait
+    
+    # Parse results
+    while IFS=: read -r slot exit_code result; do
+        if [[ -n "$slot" ]]; then
+            output_array[$slot]="$result"
+        fi
+    done < "$result_file"
+    
+    # Cleanup
+    rm -f "$result_file"
+    parallel_cleanup
+}

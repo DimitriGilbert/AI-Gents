@@ -77,22 +77,84 @@ cache_clear() {
     _CACHE=()
 }
 
-# Lazy loading wrapper
-# Usage: lazy_load <cache_key> <loader_function> [args...]
+# Lazy loading wrapper with TTL support
+# Usage: lazy_load <cache_key> <loader_function> [ttl_seconds] [args...]
 lazy_load() {
     local cache_key="$1"
     local loader="$2"
-    shift 2
+    local ttl="${3:-0}"
+    shift 3
     
+    # Check if cached and not expired
     if cache_has "$cache_key"; then
-        cache_get "$cache_key"
-        return 0
+        if [[ $ttl -gt 0 ]]; then
+            local cache_time
+            cache_time="${_CACHE_TIME[$cache_key]:-0}"
+            local current_time
+            current_time=$(date +%s)
+            if [[ $((current_time - cache_time)) -le $ttl ]]; then
+                cache_get "$cache_key"
+                return 0
+            fi
+        else
+            cache_get "$cache_key"
+            return 0
+        fi
     fi
     
     local result
     result="$($loader "$@")"
     cache_set "$cache_key" "$result"
+    
+    # Store cache timestamp
+    if [[ $ttl -gt 0 ]]; then
+        _CACHE_TIME[$cache_key]=$(date +%s)
+    fi
+    
     echo "$result"
+}
+
+# Lazy load agent configuration
+# Usage: lazy_load_agent <agent_name>
+lazy_load_agent() {
+    local agent_name="$1"
+    local cache_key="agent:${agent_name}"
+    
+    lazy_load "$cache_key" "get_agent_file" 300 "$agent_name"
+}
+
+# Lazy load provider
+# Usage: lazy_load_provider <provider_name>
+lazy_load_provider() {
+    local provider_name="$1"
+    local cache_key="provider:${provider_name}"
+    
+    lazy_load "$cache_key" "_load_provider_cached" 0 "$provider_name"
+}
+
+# Internal: load provider and return success
+_load_provider_cached() {
+    local provider_name="$1"
+    if provider_load "$provider_name" 2>/dev/null; then
+        echo "loaded"
+    else
+        echo "failed"
+    fi
+}
+
+# Clear expired cache entries
+cache_clear_expired() {
+    local current_time
+    current_time=$(date +%s)
+    
+    for key in "${_CACHE_TIME[@]}"; do
+        local cache_time="${_CACHE_TIME[$key]}"
+        # Default TTL of 5 minutes if not specified
+        if [[ $((current_time - cache_time)) -gt 300 ]]; then
+            unset "_CACHE[$key]"
+            unset "_CACHE_TIME[$key]"
+        fi
+    done
 }
 
 # Parse command from user input
