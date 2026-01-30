@@ -23,40 +23,43 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable}`}>
       <ThemeProvider className="bg-gradient-to-b from-[#088da5] to-[#228c22] dark:from-[#006b3c] dark:to-[#004080]">
-        <nav className="fixed left-0 right-0 top-0 bg-white/10 p-4 backdrop-blur-md">
+        <nav className="fixed top-0 right-0 left-0 bg-white/10 p-4 backdrop-blur-md">
           <div className="mx-auto max-w-7xl">
             <NavigationMenu>
               <NavigationMenuList className="flex justify-center">
                 <NavigationMenuItem>
-                  <Link href="/" legacyBehavior passHref>
-                    <NavigationMenuLink
-                      className={`${navigationMenuTriggerStyle()} text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300`}
-                    >
-                      AI-Gents
-                    </NavigationMenuLink>
-                  </Link>
+                  {/*<Link href="/" passHref>*/}
+                  <NavigationMenuLink
+                    className={`${navigationMenuTriggerStyle()} text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300`}
+                    href="/"
+                  >
+                    AI-Gents
+                  </NavigationMenuLink>
+                  {/*</Link>*/}
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <Link href="/docs" legacyBehavior passHref>
-                    <NavigationMenuLink
-                      className={`${navigationMenuTriggerStyle()} text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300`}
-                    >
-                      Docs
-                    </NavigationMenuLink>
-                  </Link>
+                  {/*<Link href="/docs" legacyBehavior passHref>*/}
+                  <NavigationMenuLink
+                    className={`${navigationMenuTriggerStyle()} text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300`}
+                    href="/docs"
+                  >
+                    Docs
+                  </NavigationMenuLink>
+                  {/*</Link>*/}
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <Link
+                  {/*<Link
                     href="https://github.com/DimitriGilbert/ai-gents"
                     legacyBehavior
                     passHref
+                  >*/}
+                  <NavigationMenuLink
+                    className={`${navigationMenuTriggerStyle()} text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300`}
+                    href="https://github.com/DimitriGilbert/ai-gents"
                   >
-                    <NavigationMenuLink
-                      className={`${navigationMenuTriggerStyle()} text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300`}
-                    >
-                      GitHub
-                    </NavigationMenuLink>
-                  </Link>
+                    GitHub
+                  </NavigationMenuLink>
+                  {/*</Link>*/}
                 </NavigationMenuItem>
                 <NavigationMenuItem>
                   <ThemeToggle />
