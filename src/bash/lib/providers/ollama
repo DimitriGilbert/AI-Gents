@@ -72,3 +72,36 @@ provider_format_tool_result() {
         --arg content "$result" \
         '{role: "tool", tool_name: $name, content: $content}'
 }
+
+# Format assistant message from provider response for conversation history
+# Usage: provider_format_assistant_message <response_json>
+# Returns: Normalized JSON: {role: "assistant", content: "...", tool_calls: [...]}
+provider_format_assistant_message() {
+    local response="$1"
+
+    # Ollama response path: .message
+    # Extract content and tool_calls, normalize to standard format
+    # tool_calls in Ollama use .function.name and .function.arguments
+    echo "$response" | jq '
+        .message |
+        {
+            role: "assistant",
+            content: (.content // null),
+            tool_calls: (
+                (.tool_calls // null) |
+                if . == null then null else
+                    [.[] |
+                        {
+                            id: .id,
+                            type: "function",
+                            function: {
+                                name: .function.name,
+                                arguments: (.function.arguments | tojson)
+                            }
+                        }
+                    ]
+                end
+            )
+        }
+    '
+}

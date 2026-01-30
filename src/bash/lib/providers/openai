@@ -185,3 +185,21 @@ provider_format_tool_result() {
         --arg content "$result" \
         '{role: "tool", tool_call_id: $id, content: $content}'
 }
+
+# Override: Format assistant message from provider response for conversation history
+# Usage: provider_format_assistant_message <response_json>
+# Returns: Normalized JSON: {role: "assistant", content: "...", tool_calls: [...]}
+provider_format_assistant_message() {
+    local response="$1"
+
+    # OpenAI response path: .choices[0].message
+    # Extract content and tool_calls, normalize to standard format
+    echo "$response" | jq '
+        .choices[0].message |
+        {
+            role: "assistant",
+            content: (.content // null),
+            tool_calls: (.tool_calls // null)
+        }
+    '
+}

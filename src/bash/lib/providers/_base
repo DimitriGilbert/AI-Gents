@@ -207,3 +207,16 @@ provider_format_tool_result() {
     # Default: OpenAI format
     jq -n --arg id "$tool_call_id" --arg content "$result" '{role: "tool", tool_call_id: $id, content: $content}'
 }
+
+# Format assistant message from provider response for conversation history
+# Usage: provider_format_assistant_message <response_json>
+# Returns: Normalized JSON: {role: "assistant", content: "...", tool_calls: [...]}
+provider_format_assistant_message() {
+    local response="$1"
+    # Default: OpenAI format
+    echo "$response" | jq -c '{
+        role: "assistant",
+        content: .choices[0].message.content,
+        tool_calls: .choices[0].message.tool_calls
+    }'
+}

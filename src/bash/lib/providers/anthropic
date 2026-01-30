@@ -158,3 +158,37 @@ provider_format_tool_result() {
         --arg content "$result" \
         '{role: "user", content: [{type: "tool_result", tool_use_id: $id, content: $content}]}'
 }
+
+# Override: Format assistant message from provider response for conversation history
+# Usage: provider_format_assistant_message <response_json>
+# Returns: Normalized JSON: {role: "assistant", content: "...", tool_calls: [...]}
+provider_format_assistant_message() {
+    local response="$1"
+
+    # Anthropic response has .content array with different block types
+    # - Text content: blocks with type: "text" (combine all)
+    # - Tool calls: blocks with type: "tool_use" (convert to standard format)
+    echo "$response" | jq '
+        {
+            role: "assistant",
+            content: (
+                [.content[]? | select(.type == "text") | .text] |
+                join("") |
+                if length > 0 then . else null end
+            ),
+            tool_calls: (
+                [.content[]? | select(.type == "tool_use") |
+                    {
+                        id: .id,
+                        type: "function",
+                        function: {
+                            name: .name,
+                            arguments: (.input | tojson)
+                        }
+                    }
+                ] |
+                if length > 0 then . else null end
+            )
+        }
+    '
+}
