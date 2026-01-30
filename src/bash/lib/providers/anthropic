@@ -82,3 +82,36 @@ provider_parse_error() {
     local response="$1"
     echo "$response" | jq -r '.error.message // .error.type // empty'
 }
+
+# Override: Anthropic supports multimodal content (Claude 3.x+)
+provider_supports_multimodal() {
+    return 0
+}
+
+# Override: Format content for Anthropic API
+# Anthropic uses different format: type "image" with source object
+provider_format_multimodal_content() {
+    local content_json="$1"
+    # Convert from OpenAI format to Anthropic format
+    # OpenAI: {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}}
+    # Anthropic: {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": "..."}}
+    echo "$content_json" | jq '[.[] | 
+        if .type == "image_url" then
+            {
+                type: "image",
+                source: {
+                    type: "base64",
+                    media_type: (.mime_type // "image/jpeg"),
+                    data: (.image_url.url | capture("^data:[^;]+;base64,(?<data>.*)$").data)
+                }
+            }
+        else
+            .
+        end]'
+}
+
+# Override: Get supported content types
+provider_get_supported_content_types() {
+    # Anthropic supports images (png, jpeg, webp, gif) and PDFs (as images)
+    echo "image document"
+}

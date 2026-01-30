@@ -148,3 +148,23 @@ provider_has_function_call() {
     
     return 1
 }
+
+# Override: OpenAI supports multimodal content (GPT-4o, GPT-4 Vision, etc.)
+provider_supports_multimodal() {
+    return 0
+}
+
+# Override: Format content for OpenAI API
+# OpenAI uses standard OpenAI format (already compatible)
+provider_format_multimodal_content() {
+    local content_json="$1"
+    # OpenAI uses standard format: [{"type": "text", "text": "..."}, {"type": "image_url", "image_url": {"url": "..."}}]
+    # Just remove any mime_type metadata we added
+    echo "$content_json" | jq '[.[] | del(.mime_type)]'
+}
+
+# Override: Get supported content types
+provider_get_supported_content_types() {
+    # OpenAI supports images (png, jpeg, webp, gif) and documents
+    echo "image document"
+}

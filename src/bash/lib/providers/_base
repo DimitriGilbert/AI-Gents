@@ -138,3 +138,28 @@ provider_is_available() {
     # Default: check if URL is configured
     [[ -n "$(provider_get_url)" ]]
 }
+
+# Check if provider supports multimodal content (images, documents, audio, video)
+# Usage: provider_supports_multimodal
+# Returns: 0 if supported, 1 otherwise
+provider_supports_multimodal() {
+    # Default: no multimodal support
+    return 1
+}
+
+# Format content array for provider's specific API requirements
+# Usage: provider_format_multimodal_content <content_array_json>
+# Returns: Formatted JSON array suitable for the provider's API
+provider_format_multimodal_content() {
+    local content_json="$1"
+    # Default: return content as-is (OpenAI/OpenRouter compatible)
+    echo "$content_json"
+}
+
+# Get supported content types for this provider
+# Usage: provider_get_supported_content_types
+# Returns: Space-separated list of supported types (e.g., "image document audio")
+provider_get_supported_content_types() {
+    # Default: no multimodal support
+    echo ""
+}

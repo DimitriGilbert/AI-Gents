@@ -115,3 +115,22 @@ provider_get_headers() {
     # Add X-Title header (application name)
     headers+=(-H "X-Title: AI-Gents")
 }
+
+# Override: OpenRouter supports multimodal content
+provider_supports_multimodal() {
+    return 0
+}
+
+# Override: Format content for OpenRouter API
+# OpenRouter uses same format as OpenAI
+provider_format_multimodal_content() {
+    local content_json="$1"
+    # OpenRouter uses standard OpenAI format
+    echo "$content_json" | jq '[.[] | del(.mime_type)]'
+}
+
+# Override: Get supported content types
+provider_get_supported_content_types() {
+    # OpenRouter supports images, documents, audio, and video
+    echo "image document audio video"
+}

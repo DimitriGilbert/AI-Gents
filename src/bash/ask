@@ -32,39 +32,43 @@ fi
 # @parseArger opt response_format "response_format param for http request"
 # @parseArger opt structured_outputs "structured_outputs param for http request"
 # @parseArger opt log "log file"
+# @parseArger opt attach "text file(s) to attach to the prompt" --repeat --complete "file"
 # @parseArger flag stream "stream to stdout"
 # @parseArger flag safe-mode "Disable command execution (!#command;) for safety"
 # @parseArger-declarations-end
 
 # @parseArger-utils
-_helpHasBeenPrinted=1
-_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+_helpHasBeenPrinted=1;
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)";
 # @parseArger-utils-end
 
 # @parseArger-parsing
 
-__cli_arg_count=$#
+__cli_arg_count=$#;
 
-die() {
+die()
+{
 	local _ret=1
-	if [[ -n "$2" ]] && [[ "$2" =~ ^[0-9]+$ ]]; then
-		_ret="$2"
-	fi
+    if [[ -n "$2" ]] && [[ "$2" =~ ^[0-9]+$ ]]; then
+   	_ret="$2"
+    fi
 	test "${_PRINT_HELP:-no}" = yes && print_help >&2
 	log "$1" -3 >&2
 	exit "${_ret}"
 }
 
-begins_with_short_option() {
+
+begins_with_short_option()
+{
 	local first_option all_short_options=''
 	first_option="${1:0:1}"
 	test "$all_short_options" = "${all_short_options/$first_option/}" && return 1 || return 0
 }
 
 # POSITIONALS ARGUMENTS
-_positionals=()
-_optional_positionals=()
-_arg_prompt=""
+_positionals=();
+_optional_positionals=();
+_arg_prompt="";
 # OPTIONALS ARGUMENTS
 _arg_api=
 _arg_api_key=
@@ -87,387 +91,419 @@ _arg_top_logprobs=
 _arg_response_format=
 _arg_structured_outputs=
 _arg_log=
+_arg_attach=()
 # FLAGS
 _arg_stream="off"
 _arg_safe_mode="off"
 # NESTED
-_verbose_level="0"
+_verbose_level="0";
 
-print_help() {
-	_triggerSCHelp=1
+
+
+print_help()
+{
+	_triggerSCHelp=1;
 
 	if [[ "$_helpHasBeenPrinted" == "1" ]]; then
-		_helpHasBeenPrinted=0
+		_helpHasBeenPrinted=0;
 		echo -e "ask something to an AI:"
-		echo -e "	prompt: what to ask"
-		echo -e "	--api <api>: api url"
-		echo -e "	--api-key <api-key>: api key"
-		echo -e "	--model <model>: model name"
-		echo -e "	--system <system>: system prompt"
-		echo -e "	--conversation <conversation>: chat history to be continued"
-		echo -e "	--provider <provider>: LLM provider"
-		echo -e "	--tools <tools>: tools param for http request"
-		echo -e "	--tool_choice <tool_choice>: tool_choice param for http request"
-		echo -e "	--max_tokens <max_tokens>: max_tokens param for http request"
-		echo -e "	--temperature <temperature>: temperature param for http request"
-		echo -e "	--top_p <top_p>: top_p param for http request"
-		echo -e "	--stop <stop>: stop param for http request"
-		echo -e "	--frequency_penalty <frequency_penalty>: frequency_penalty param for http request"
-		echo -e "	--presence_penalty <presence_penalty>: presence_penalty param for http request"
-		echo -e "	--seed <seed>: seed param for http request"
-		echo -e "	--logit_bias <logit_bias>: logit_bias param for http request"
-		echo -e "	--logprobs <logprobs>: logprobs param for http request"
-		echo -e "	--top_logprobs <top_logprobs>: top_logprobs param for http request"
-		echo -e "	--response_format <response_format>: response_format param for http request"
-		echo -e "	--structured_outputs <structured_outputs>: structured_outputs param for http request"
-		echo -e "	--log <log>: log file"
-		echo -e "	--stream|--no-stream: stream to stdout"
-		echo -e "	--safe-mode|--no-safe-mode: Disable command execution (!#command;) for safety, off by default (use --safe-mode to turn it on)"
-		echo -e "Usage :
-	$0 <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--tools <value>] [--tool_choice <value>] [--max_tokens <value>] [--temperature <value>] [--top_p <value>] [--stop <value>] [--frequency_penalty <value>] [--presence_penalty <value>] [--seed <value>] [--logit_bias <value>] [--logprobs <value>] [--top_logprobs <value>] [--response_format <value>] [--structured_outputs <value>] [--log <value>] [--[no-]stream]"
+	echo -e "	prompt: what to ask"
+	echo -e "	--api <api>: api url"
+	echo -e "	--api-key <api-key>: api key"
+	echo -e "	--model <model>: model name"
+	echo -e "	--system <system>: system prompt"
+	echo -e "	--conversation <conversation>: chat history to be continued"
+	echo -e "	--provider <provider>: LLM provider"
+	echo -e "	--tools <tools>: tools param for http request"
+	echo -e "	--tool_choice <tool_choice>: tool_choice param for http request"
+	echo -e "	--max_tokens <max_tokens>: max_tokens param for http request"
+	echo -e "	--temperature <temperature>: temperature param for http request"
+	echo -e "	--top_p <top_p>: top_p param for http request"
+	echo -e "	--stop <stop>: stop param for http request"
+	echo -e "	--frequency_penalty <frequency_penalty>: frequency_penalty param for http request"
+	echo -e "	--presence_penalty <presence_penalty>: presence_penalty param for http request"
+	echo -e "	--seed <seed>: seed param for http request"
+	echo -e "	--logit_bias <logit_bias>: logit_bias param for http request"
+	echo -e "	--logprobs <logprobs>: logprobs param for http request"
+	echo -e "	--top_logprobs <top_logprobs>: top_logprobs param for http request"
+	echo -e "	--response_format <response_format>: response_format param for http request"
+	echo -e "	--structured_outputs <structured_outputs>: structured_outputs param for http request"
+	echo -e "	--log <log>: log file"
+	echo -e "	--attach <attach>: text file(s) to attach to the prompt, repeatable"
+	echo -e "	--stream|--no-stream: stream to stdout"
+	echo -e "	--safe-mode|--no-safe-mode: Disable command execution (!#command;) for safety"
+	echo -e "Usage :
+	$0 <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--tools <value>] [--tool_choice <value>] [--max_tokens <value>] [--temperature <value>] [--top_p <value>] [--stop <value>] [--frequency_penalty <value>] [--presence_penalty <value>] [--seed <value>] [--logit_bias <value>] [--logprobs <value>] [--top_logprobs <value>] [--response_format <value>] [--structured_outputs <value>] [--log <value>] [--attach <value>] [--[no-]stream] [--[no-]safe-mode]";
 	fi
 
 }
 
 log() {
-	local _arg_msg="${1}"
-	local _arg_level="${2:-0}"
+	local _arg_msg="${1}";
+	local _arg_level="${2:-0}";
 	if [ "${_arg_level}" -le "${_verbose_level}" ]; then
 		case "$_arg_level" in
-		-3)
-			_arg_COLOR="\033[0;31m"
-			;;
-		-2)
-			_arg_COLOR="\033[0;33m"
-			;;
-		-1)
-			_arg_COLOR="\033[1;33m"
-			;;
-		1)
-			_arg_COLOR="\033[0;32m"
-			;;
-		2)
-			_arg_COLOR="\033[1;36m"
-			;;
-		3)
-			_arg_COLOR="\033[0;36m"
-			;;
-		*)
-			_arg_COLOR="\033[0m"
-			;;
+			-3)
+				_arg_COLOR="\033[0;31m";
+				;;
+			-2)
+				_arg_COLOR="\033[0;33m";
+				;;
+			-1)
+				_arg_COLOR="\033[1;33m";
+				;;
+			1)
+				_arg_COLOR="\033[0;32m";
+				;;
+			2)
+				_arg_COLOR="\033[1;36m";
+				;;
+			3)
+				_arg_COLOR="\033[0;36m";
+				;;
+			*)
+				_arg_COLOR="\033[0m";
+				;;
 		esac
 		if [ "${_has_colors}" == "1" ]; then
-			echo -e "${_arg_COLOR}${_arg_msg}\033[0m"
+			echo -e "${_arg_COLOR}${_arg_msg}\033[0m";
 		else
-			echo "${_arg_msg}"
+			echo "${_arg_msg}";
 		fi
 	fi
 }
 
-parse_commandline() {
+parse_commandline()
+{
 	_positionals_count=0
-	while test $# -gt 0; do
+	while test $# -gt 0
+	do
 		_key="$1"
 		case "$_key" in
-		--api)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_api="$2"
-			shift
-			;;
-		--api=*)
-			_arg_api="${_key##--api=}"
-			;;
-
-		--api-key)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_api_key="$2"
-			shift
-			;;
-		--api-key=*)
-			_arg_api_key="${_key##--api-key=}"
-			;;
-
-		--model)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_model="$2"
-			shift
-			;;
-		--model=*)
-			_arg_model="${_key##--model=}"
-			;;
-
-		--system)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_system="$2"
-			shift
-			;;
-		--system=*)
-			_arg_system="${_key##--system=}"
-			;;
-
-		--conversation)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_conversation="$2"
-			shift
-			;;
-		--conversation=*)
-			_arg_conversation="${_key##--conversation=}"
-			;;
-
-		--provider)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_provider="$2"
-			shift
-			;;
-		--provider=*)
-			_arg_provider="${_key##--provider=}"
-			;;
-
-		--tools)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_tools="$2"
-			shift
-			;;
-		--tools=*)
-			_arg_tools="${_key##--tools=}"
-			;;
-
-		--tool_choice)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_tool_choice="$2"
-			shift
-			;;
-		--tool_choice=*)
-			_arg_tool_choice="${_key##--tool_choice=}"
-			;;
-
-		--max_tokens)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_max_tokens="$2"
-			shift
-			;;
-		--max_tokens=*)
-			_arg_max_tokens="${_key##--max_tokens=}"
-			;;
-
-		--temperature)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_temperature="$2"
-			shift
-			;;
-		--temperature=*)
-			_arg_temperature="${_key##--temperature=}"
-			;;
-
-		--top_p)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_top_p="$2"
-			shift
-			;;
-		--top_p=*)
-			_arg_top_p="${_key##--top_p=}"
-			;;
-
-		--stop)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_stop="$2"
-			shift
-			;;
-		--stop=*)
-			_arg_stop="${_key##--stop=}"
-			;;
-
-		--frequency_penalty)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_frequency_penalty="$2"
-			shift
-			;;
-		--frequency_penalty=*)
-			_arg_frequency_penalty="${_key##--frequency_penalty=}"
-			;;
-
-		--presence_penalty)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_presence_penalty="$2"
-			shift
-			;;
-		--presence_penalty=*)
-			_arg_presence_penalty="${_key##--presence_penalty=}"
-			;;
-
-		--seed)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_seed="$2"
-			shift
-			;;
-		--seed=*)
-			_arg_seed="${_key##--seed=}"
-			;;
-
-		--logit_bias)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_logit_bias="$2"
-			shift
-			;;
-		--logit_bias=*)
-			_arg_logit_bias="${_key##--logit_bias=}"
-			;;
-
-		--logprobs)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_logprobs="$2"
-			shift
-			;;
-		--logprobs=*)
-			_arg_logprobs="${_key##--logprobs=}"
-			;;
-
-		--top_logprobs)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_top_logprobs="$2"
-			shift
-			;;
-		--top_logprobs=*)
-			_arg_top_logprobs="${_key##--top_logprobs=}"
-			;;
-
-		--response_format)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_response_format="$2"
-			shift
-			;;
-		--response_format=*)
-			_arg_response_format="${_key##--response_format=}"
-			;;
-
-		--structured_outputs)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_structured_outputs="$2"
-			shift
-			;;
-		--structured_outputs=*)
-			_arg_structured_outputs="${_key##--structured_outputs=}"
-			;;
-
-		--log)
-			test $# -lt 2 && die "Missing value for the option: '$_key'" 1
-			_arg_log="$2"
-			shift
-			;;
-		--log=*)
-			_arg_log="${_key##--log=}"
-			;;
-
-		--stream)
-			_arg_stream="on"
-			;;
-		--no-stream)
-			_arg_stream="off"
-			;;
-		--safe-mode)
-			_arg_safe_mode="on"
-			;;
-		--no-safe-mode)
-			_arg_safe_mode="off"
-			;;
-		-h | --help)
-			print_help
-			exit 0
-			;;
-		-h*)
-			print_help
-			exit 0
-			;;
-		--verbose)
-			if [ $# -lt 2 ]; then
-				_verbose_level="$((_verbose_level + 1))"
-			else
-				_verbose_level="$2"
+			--api)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_api="$2"
 				shift
-			fi
-			;;
-		--quiet)
-			if [ $# -lt 2 ]; then
-				_verbose_level="$((_verbose_level - 1))"
-			else
-				_verbose_level="-$2"
+				;;
+			--api=*)
+				_arg_api="${_key##--api=}"
+				;;
+			
+			--api-key)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_api_key="$2"
 				shift
-			fi
-			;;
-
-		*)
-			_last_positional="$1"
-			_positionals+=("$_last_positional")
-			_positionals_count=$((_positionals_count + 1))
-			;;
+				;;
+			--api-key=*)
+				_arg_api_key="${_key##--api-key=}"
+				;;
+			
+			--model)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_model="$2"
+				shift
+				;;
+			--model=*)
+				_arg_model="${_key##--model=}"
+				;;
+			
+			--system)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_system="$2"
+				shift
+				;;
+			--system=*)
+				_arg_system="${_key##--system=}"
+				;;
+			
+			--conversation)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_conversation="$2"
+				shift
+				;;
+			--conversation=*)
+				_arg_conversation="${_key##--conversation=}"
+				;;
+			
+			--provider)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_provider="$2"
+				shift
+				;;
+			--provider=*)
+				_arg_provider="${_key##--provider=}"
+				;;
+			
+			--tools)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_tools="$2"
+				shift
+				;;
+			--tools=*)
+				_arg_tools="${_key##--tools=}"
+				;;
+			
+			--tool_choice)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_tool_choice="$2"
+				shift
+				;;
+			--tool_choice=*)
+				_arg_tool_choice="${_key##--tool_choice=}"
+				;;
+			
+			--max_tokens)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_max_tokens="$2"
+				shift
+				;;
+			--max_tokens=*)
+				_arg_max_tokens="${_key##--max_tokens=}"
+				;;
+			
+			--temperature)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_temperature="$2"
+				shift
+				;;
+			--temperature=*)
+				_arg_temperature="${_key##--temperature=}"
+				;;
+			
+			--top_p)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_top_p="$2"
+				shift
+				;;
+			--top_p=*)
+				_arg_top_p="${_key##--top_p=}"
+				;;
+			
+			--stop)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_stop="$2"
+				shift
+				;;
+			--stop=*)
+				_arg_stop="${_key##--stop=}"
+				;;
+			
+			--frequency_penalty)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_frequency_penalty="$2"
+				shift
+				;;
+			--frequency_penalty=*)
+				_arg_frequency_penalty="${_key##--frequency_penalty=}"
+				;;
+			
+			--presence_penalty)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_presence_penalty="$2"
+				shift
+				;;
+			--presence_penalty=*)
+				_arg_presence_penalty="${_key##--presence_penalty=}"
+				;;
+			
+			--seed)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_seed="$2"
+				shift
+				;;
+			--seed=*)
+				_arg_seed="${_key##--seed=}"
+				;;
+			
+			--logit_bias)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_logit_bias="$2"
+				shift
+				;;
+			--logit_bias=*)
+				_arg_logit_bias="${_key##--logit_bias=}"
+				;;
+			
+			--logprobs)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_logprobs="$2"
+				shift
+				;;
+			--logprobs=*)
+				_arg_logprobs="${_key##--logprobs=}"
+				;;
+			
+			--top_logprobs)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_top_logprobs="$2"
+				shift
+				;;
+			--top_logprobs=*)
+				_arg_top_logprobs="${_key##--top_logprobs=}"
+				;;
+			
+			--response_format)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_response_format="$2"
+				shift
+				;;
+			--response_format=*)
+				_arg_response_format="${_key##--response_format=}"
+				;;
+			
+			--structured_outputs)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_structured_outputs="$2"
+				shift
+				;;
+			--structured_outputs=*)
+				_arg_structured_outputs="${_key##--structured_outputs=}"
+				;;
+			
+			--log)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_log="$2"
+				shift
+				;;
+			--log=*)
+				_arg_log="${_key##--log=}"
+				;;
+			
+			--attach)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_attach+=("$2")
+				shift
+				;;
+			--attach=*)
+				_arg_attach+=("${_key##--attach=}")
+				;;
+			
+			--stream)
+				_arg_stream="on"
+				;;
+			--no-stream)
+				_arg_stream="off"
+				;;
+			--safe-mode)
+				_arg_safe_mode="on"
+				;;
+			--no-safe-mode)
+				_arg_safe_mode="off"
+				;;
+			-h|--help)
+				print_help;
+				exit 0;
+				;;
+			-h*)
+				print_help;
+				exit 0;
+				;;
+			--verbose)
+				if [ $# -lt 2 ];then
+					_verbose_level="$((_verbose_level + 1))";
+				else
+					_verbose_level="$2";
+					shift;
+				fi
+				;;
+			--quiet)
+				if [ $# -lt 2 ];then
+					_verbose_level="$((_verbose_level - 1))";
+				else
+					_verbose_level="-$2";
+					shift;
+				fi
+				;;
+			
+				*)
+				_last_positional="$1"
+				_positionals+=("$_last_positional")
+				_positionals_count=$((_positionals_count + 1))
+				;;
 		esac
 		shift
 	done
 }
 
-handle_passed_args_count() {
+
+handle_passed_args_count()
+{
 	local _required_args_string="prompt"
-	if [ "${_positionals_count}" -gt 1 ] && [ "$_helpHasBeenPrinted" == "1" ]; then
+	if [ "${_positionals_count}" -gt 1 ] && [ "$_helpHasBeenPrinted" == "1" ];then
 		_PRINT_HELP=yes die "FATAL ERROR: There were spurious positional arguments --- we expect at most 1 (namely: $_required_args_string), but got ${_positionals_count} (the last one was: '${_last_positional}').\n\t${_positionals[*]}" 1
 	fi
-	if [ "${_positionals_count}" -lt 1 ] && [ "$_helpHasBeenPrinted" == "1" ]; then
+	if [ "${_positionals_count}" -lt 1 ] && [ "$_helpHasBeenPrinted" == "1" ];then
 		_PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require at least 1 (namely: $_required_args_string), but got only ${_positionals_count}.
-	${_positionals[*]}" 1
+	${_positionals[*]}" 1;
 	fi
 }
 
-assign_positional_args() {
-	local _positional_name _shift_for=$1
-	_positional_names="_arg_prompt "
+
+assign_positional_args()
+{
+	local _positional_name _shift_for=$1;
+	_positional_names="_arg_prompt ";
 	shift "$_shift_for"
-	for _positional_name in ${_positional_names}; do
-		test $# -gt 0 || break
-		eval "if [ \"\$_one_of${_positional_name}\" != \"\" ];then [[ \"\${_one_of${_positional_name}[*]}\" =~ \"\${1}\" ]];fi" || die "${_positional_name} must be one of: $(eval "echo \"\${_one_of${_positional_name}[*]}\"")" 1
-		eval "$_positional_name=\${1}" || die "Error during argument parsing, possibly an ParseArger bug." 1
-		shift
+	for _positional_name in ${_positional_names};do
+		test $# -gt 0 || break;
+		eval "if [ \"\$_one_of${_positional_name}\" != \"\" ];then [[ \"\${_one_of${_positional_name}[*]}\" =~ \"\${1}\" ]];fi" || die "${_positional_name} must be one of: $(eval "echo \"\${_one_of${_positional_name}[*]}\"")" 1;
+		local _match_var="_match${_positional_name}";
+		local _regex="${!_match_var}";
+		if [ -n "$_regex" ]; then
+			[[ "${1}" =~ $_regex ]] || die "${_positional_name} does not match pattern: $_regex"
+		fi
+		eval "$_positional_name=\${1}" || die "Error during argument parsing, possibly an ParseArger bug." 1;
+		shift;
 	done
 }
 
-print_debug() {
+print_debug()
+{
 	print_help
 	# shellcheck disable=SC2145
-	echo "DEBUG: $0 $@"
-
-	echo -e "	prompt: ${_arg_prompt}"
-	echo -e "	api: ${_arg_api}"
-	echo -e "	api-key: ${_arg_api_key}"
-	echo -e "	model: ${_arg_model}"
-	echo -e "	system: ${_arg_system}"
-	echo -e "	conversation: ${_arg_conversation}"
-	echo -e "	provider: ${_arg_provider}"
-	echo -e "	tools: ${_arg_tools}"
-	echo -e "	tool_choice: ${_arg_tool_choice}"
-	echo -e "	max_tokens: ${_arg_max_tokens}"
-	echo -e "	temperature: ${_arg_temperature}"
-	echo -e "	top_p: ${_arg_top_p}"
-	echo -e "	stop: ${_arg_stop}"
-	echo -e "	frequency_penalty: ${_arg_frequency_penalty}"
-	echo -e "	presence_penalty: ${_arg_presence_penalty}"
-	echo -e "	seed: ${_arg_seed}"
-	echo -e "	logit_bias: ${_arg_logit_bias}"
-	echo -e "	logprobs: ${_arg_logprobs}"
-	echo -e "	top_logprobs: ${_arg_top_logprobs}"
-	echo -e "	response_format: ${_arg_response_format}"
-	echo -e "	structured_outputs: ${_arg_structured_outputs}"
-	echo -e "	log: ${_arg_log}"
-	echo -e "	stream: ${_arg_stream}"
-	echo -e "	safe-mode: ${_arg_safe_mode}"
+	echo "DEBUG: $0 $@";
+	
+	echo -e "	prompt: ${_arg_prompt}";
+	echo -e "	api: ${_arg_api}";
+	echo -e "	api-key: ${_arg_api_key}";
+	echo -e "	model: ${_arg_model}";
+	echo -e "	system: ${_arg_system}";
+	echo -e "	conversation: ${_arg_conversation}";
+	echo -e "	provider: ${_arg_provider}";
+	echo -e "	tools: ${_arg_tools}";
+	echo -e "	tool_choice: ${_arg_tool_choice}";
+	echo -e "	max_tokens: ${_arg_max_tokens}";
+	echo -e "	temperature: ${_arg_temperature}";
+	echo -e "	top_p: ${_arg_top_p}";
+	echo -e "	stop: ${_arg_stop}";
+	echo -e "	frequency_penalty: ${_arg_frequency_penalty}";
+	echo -e "	presence_penalty: ${_arg_presence_penalty}";
+	echo -e "	seed: ${_arg_seed}";
+	echo -e "	logit_bias: ${_arg_logit_bias}";
+	echo -e "	logprobs: ${_arg_logprobs}";
+	echo -e "	top_logprobs: ${_arg_top_logprobs}";
+	echo -e "	response_format: ${_arg_response_format}";
+	echo -e "	structured_outputs: ${_arg_structured_outputs}";
+	echo -e "	log: ${_arg_log}";
+	echo -e "	attach: ${_arg_attach[*]}";
+	echo -e "	stream: ${_arg_stream}";
+	echo -e "	safe-mode: ${_arg_safe_mode}";
 
 }
+
 
 on_interrupt() {
-	die Process aborted! 130
+	die Process aborted! 130;
 }
 
-parse_commandline "$@"
-handle_passed_args_count
-assign_positional_args 1 "${_positionals[@]}"
-trap on_interrupt INT
+
+parse_commandline "$@";
+handle_passed_args_count;
+assign_positional_args 1 "${_positionals[@]}";
+trap on_interrupt INT;
+
+
+
 
 # @parseArger-parsing-end
 # print_debug "$@"
@@ -476,6 +512,7 @@ trap on_interrupt INT
 source "$_SCRIPT_DIR/common"
 source "$_SCRIPT_DIR/lib/validation"
 source "$_SCRIPT_DIR/lib/security"
+source "$_SCRIPT_DIR/lib/attachments"
 
 # Initialize security (empty blacklist by default)
 load_command_blacklist
@@ -634,6 +671,47 @@ else
 	show_command_safety_warning "$_arg_prompt"
 fi
 
+# Process attached files
+# Check if we have binary attachments that need special handling
+_has_binary_attachments=0
+_content_array_file=""
+
+if [ "${#_arg_attach[@]}" -gt 0 ]; then
+	# Validate all attachments exist and are readable
+	for attach_file in "${_arg_attach[@]}"; do
+		if [ ! -f "$attach_file" ]; then
+			die "Attached file not found: $attach_file" 1
+		fi
+		if [ ! -r "$attach_file" ]; then
+			die "Cannot read attached file: $attach_file" 1
+		fi
+		# Check if any attachment is binary
+		if is_binary_file "$attach_file"; then
+			_has_binary_attachments=1
+		fi
+	done
+	
+	# If we have binary attachments, build content array for multimodal API
+	if [ "$_has_binary_attachments" -eq 1 ]; then
+		# Write content array to temp file instead of variable (to avoid bash arg limits)
+		_content_array_file=$(mktemp)
+		build_mixed_content "$_arg_prompt" "${_arg_attach[@]}" > "$_content_array_file" || die "Failed to process attachments" 1
+		# Format for provider and save back
+		format_content_for_provider "${_arg_provider:-openrouter}" < "$_content_array_file" > "${_content_array_file}.fmt"
+		mv "${_content_array_file}.fmt" "$_content_array_file"
+	else
+		# All text files - use legacy inlining behavior
+		for attach_file in "${_arg_attach[@]}"; do
+			file_content=$(cat "$attach_file")
+			_arg_prompt="$_arg_prompt
+
+--- Attached file: $(basename "$attach_file") ---
+$file_content
+--- End of $(basename "$attach_file") ---"
+		done
+	fi
+fi
+
 # Extract commands between #!/ and ; from user prompt with blacklist filtering
 _arg_prompt_cmds=()
 _prompt_cmd_matches=()
@@ -689,72 +767,112 @@ fi
 # die "$_arg_prompt" 0
 
 # Create the JSON payload using jq to handle all escaping
-if [ "$_arg_conversation" != "" ]; then
-	# Read messages from conversation file
-	messages="["
-	# Add system message if provided
-	if [ "$_arg_system" != "" ]; then
-		messages="$messages{\"role\": \"system\", \"content\": $(jq -R -s '.' <<<"$_arg_system")}"
+# Handle multimodal content if we have binary attachments
+if [ "$_has_binary_attachments" -eq 1 ]; then
+	# Content array is already in temp file from earlier, read from file instead of variable
+	# Use --slurpfile to read JSON from file without bash variable limits
+	if [ "$_arg_conversation" != "" ]; then
+		# Build messages with content array support - read content from file
+		jq -n --arg model "${_arg_model,,}" --arg system "$_arg_system" --argjson stream "$_streamVal" --slurpfile content "$_content_array_file" '{
+			model: $model,
+			messages: [
+				($system | select(length > 0) | {"role": "system", "content": .}) // empty,
+				{"role": "user", "content": $content[0]}
+			] + [inputs | fromjson | select(.role != null)],
+			stream: $stream
+		}' "$_arg_conversation" > "$tmp_payload"
+	elif [ "$_arg_system" != "" ]; then
+		# System + user with content array
+		jq -n --arg model "${_arg_model,,}" --arg system "$_arg_system" --argjson stream "$_streamVal" --slurpfile content "$_content_array_file" '{
+			model: $model,
+			messages: [
+				{"role": "system", "content": $system},
+				{"role": "user", "content": $content[0]}
+			],
+			stream: $stream
+		}' > "$tmp_payload"
+	else
+		# Just user with content array
+		jq -n --arg model "${_arg_model,,}" --argjson stream "$_streamVal" --slurpfile content "$_content_array_file" '{
+			model: $model,
+			messages: [
+				{"role": "user", "content": $content[0]}
+			],
+			stream: $stream
+		}' > "$tmp_payload"
 	fi
 	
-	# Read existing conversation messages
-	while IFS= read -r line; do
-		if [ -n "$line" ]; then
-			if [ "$messages" != "[" ]; then
-				messages="$messages,"
-			fi
-			messages="$messages$line"
-		fi
-	done <"$_arg_conversation"
-
-	# Add current user message
-	if [ "$messages" != "[" ]; then
-		messages="$messages,"
-	fi
-	messages="$messages{\"role\": \"user\", \"content\": $(jq -R -s '.' <<<"$_arg_prompt")}"
-	messages="$messages]"
-
-	# Create payload with conversation history
-	printf '{\n\t"model": "%s",\n\t"messages": %s,\n\t"stream": %s%s\n}' "${_arg_model,,}" "$messages" "$_streamVal" "$([ "$_arg_tools" != "" ] && printf ',\n\t"functions": %s' "$_arg_tools")" >"$tmp_payload"
-elif [ "$_arg_system" != "" ] && [ "$_arg_prompt" != "" ]; then
-	jq -R -s '.' <<<"$_arg_system" >"$tmp_payload.system"
-	jq -R -s '.' <<<"$_arg_prompt" >"$tmp_payload.user"
-	printf '{
-		"model": "%s",
-		"messages": [
-			{"role": "system", "content": %s},
-			{"role": "user", "content": %s}
-		],
-		"stream": %s
-	}' "${_arg_model,,}" "$(cat "$tmp_payload.system" </dev/null)" "$(cat "$tmp_payload.user" </dev/null)" "$_streamVal" >"$tmp_payload"
-	rm -f "$tmp_payload.system" "$tmp_payload.user"
+	# Cleanup temp file
+	rm -f "$_content_array_file"
 else
-	# Just the user message
-	printf '{
-		"model": "%s",
-		"messages": [
-			{"role": "user", "content": %s}
-		],
-		"stream": %s
-		%s
-	}' "${_arg_model,,}" "$(jq -R -s '.' <<<"$_arg_prompt")" "$_streamVal" "$(
-		{
-			[ "$_arg_tools" != "" ] && printf ',\n\t"tools": %s' "$_arg_tools"
-			[ "$_arg_tool_choice" != "" ] && printf ',\n\t"tool_choice": %s' "$_arg_tool_choice"
-			[ "$_arg_max_tokens" != "" ] && printf ',\n\t"max_tokens": %s' "$_arg_max_tokens"
-			[ "$_arg_temperature" != "" ] && printf ',\n\t"temperature": %s' "$_arg_temperature"
-			[ "$_arg_top_p" != "" ] && printf ',\n\t"top_p": %s' "$_arg_top_p"
-			[ "$_arg_stop" != "" ] && printf ',\n\t"stop": %s' "$_arg_stop"
-			[ "$_arg_frequency_penalty" != "" ] && printf ',\n\t"frequency_penalty": %s' "$_arg_frequency_penalty"
-			[ "$_arg_presence_penalty" != "" ] && printf ',\n\t"presence_penalty": %s' "$_arg_presence_penalty"
-			[ "$_arg_seed" != "" ] && printf ',\n\t"seed": %s' "$_arg_seed"
-			[ "$_arg_logit_bias" != "" ] && printf ',\n\t"logit_bias": %s' "$_arg_logit_bias"
-			[ "$_arg_logprobs" != "" ] && printf ',\n\t"logprobs": %s' "$_arg_logprobs"
-			[ "$_arg_top_logprobs" != "" ] && printf ',\n\t"top_logprobs": %s' "$_arg_top_logprobs"
-			[ "$_arg_response_format" != "" ] && printf ',\n\t"response_format": %s' "$_arg_response_format"
-			[ "$_arg_structured_outputs" != "" ] && printf ',\n\t"structured_outputs": %s' "$_arg_structured_outputs"
-		} | tr -d '\n'
-	)" >"$tmp_payload"
+	# Standard text-only messages (original behavior)
+	if [ "$_arg_conversation" != "" ]; then
+		# Read messages from conversation file
+		messages="["
+		# Add system message if provided
+		if [ "$_arg_system" != "" ]; then
+			messages="$messages{\"role\": \"system\", \"content\": $(jq -R -s '.' <<<"$_arg_system")}"
+		fi
+		
+		# Read existing conversation messages
+		while IFS= read -r line; do
+			if [ -n "$line" ]; then
+				if [ "$messages" != "[" ]; then
+					messages="$messages,"
+				fi
+				messages="$messages$line"
+			fi
+		done <"$_arg_conversation"
+
+		# Add current user message
+		if [ "$messages" != "[" ]; then
+			messages="$messages,"
+		fi
+		messages="$messages{\"role\": \"user\", \"content\": $(jq -R -s '.' <<<"$_arg_prompt")}"
+		messages="$messages]"
+
+		# Create payload with conversation history
+		printf '{\n\t"model": "%s",\n\t"messages": %s,\n\t"stream": %s%s\n}' "${_arg_model,,}" "$messages" "$_streamVal" "$([ "$_arg_tools" != "" ] && printf ',\n\t"functions": %s' "$_arg_tools")" >"$tmp_payload"
+	elif [ "$_arg_system" != "" ] && [ "$_arg_prompt" != "" ]; then
+		jq -R -s '.' <<<"$_arg_system" >"$tmp_payload.system"
+		jq -R -s '.' <<<"$_arg_prompt" >"$tmp_payload.user"
+		printf '{
+			"model": "%s",
+			"messages": [
+				{"role": "system", "content": %s},
+				{"role": "user", "content": %s}
+			],
+			"stream": %s
+		}' "${_arg_model,,}" "$(cat "$tmp_payload.system" </dev/null)" "$(cat "$tmp_payload.user" </dev/null)" "$_streamVal" >"$tmp_payload"
+		rm -f "$tmp_payload.system" "$tmp_payload.user"
+	else
+		# Just the user message
+		printf '{
+			"model": "%s",
+			"messages": [
+				{"role": "user", "content": %s}
+			],
+			"stream": %s
+			%s
+		}' "${_arg_model,,}" "$(jq -R -s '.' <<<"$_arg_prompt")" "$_streamVal" "$(
+			{
+				[ "$_arg_tools" != "" ] && printf ',\n\t"tools": %s' "$_arg_tools"
+				[ "$_arg_tool_choice" != "" ] && printf ',\n\t"tool_choice": %s' "$_arg_tool_choice"
+				[ "$_arg_max_tokens" != "" ] && printf ',\n\t"max_tokens": %s' "$_arg_max_tokens"
+				[ "$_arg_temperature" != "" ] && printf ',\n\t"temperature": %s' "$_arg_temperature"
+				[ "$_arg_top_p" != "" ] && printf ',\n\t"top_p": %s' "$_arg_top_p"
+				[ "$_arg_stop" != "" ] && printf ',\n\t"stop": %s' "$_arg_stop"
+				[ "$_arg_frequency_penalty" != "" ] && printf ',\n\t"frequency_penalty": %s' "$_arg_frequency_penalty"
+				[ "$_arg_presence_penalty" != "" ] && printf ',\n\t"presence_penalty": %s' "$_arg_presence_penalty"
+				[ "$_arg_seed" != "" ] && printf ',\n\t"seed": %s' "$_arg_seed"
+				[ "$_arg_logit_bias" != "" ] && printf ',\n\t"logit_bias": %s' "$_arg_logit_bias"
+				[ "$_arg_logprobs" != "" ] && printf ',\n\t"logprobs": %s' "$_arg_logprobs"
+				[ "$_arg_top_logprobs" != "" ] && printf ',\n\t"top_logprobs": %s' "$_arg_top_logprobs"
+				[ "$_arg_response_format" != "" ] && printf ',\n\t"response_format": %s' "$_arg_response_format"
+				[ "$_arg_structured_outputs" != "" ] && printf ',\n\t"structured_outputs": %s' "$_arg_structured_outputs"
+			} | tr -d '\n'
+		)" >"$tmp_payload"
+	fi
 fi
 
 if [ "$_arg_api" = "" ]; then

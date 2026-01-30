@@ -1,0 +1,246 @@
+#!/bin/bash
+#
+# Attachment Utilities for AI-Gents
+# Handles file type detection, encoding, and formatting for multimodal support
+#
+
+# Supported MIME types by category
+_SUPPORTED_IMAGE_TYPES="image/png image/jpeg image/jpg image/webp image/gif"
+_SUPPORTED_DOCUMENT_TYPES="application/pdf"
+_SUPPORTED_AUDIO_TYPES="audio/mpeg audio/wav audio/ogg audio/webm audio/mp3 audio/mp4 audio/aac audio/flac audio/wma audio/aiff"
+_SUPPORTED_VIDEO_TYPES="video/mp4 video/mpeg video/ogg video/webm video/avi video/mov video/wmv video/flv video/mkv video/quicktime"
+
+# Detect MIME type of a file
+# Usage: detect_mime_type <file_path>
+# Returns: MIME type string (e.g., "image/jpeg", "text/plain")
+detect_mime_type() {
+    local file_path="$1"
+    
+    if [[ ! -f "$file_path" ]]; then
+        echo "error: file not found"
+        return 1
+    fi
+    
+    file -b --mime-type "$file_path"
+}
+
+# Check if MIME type is an image
+# Usage: is_image_mime <mime_type>
+# Returns: 0 if image, 1 otherwise
+is_image_mime() {
+    local mime_type="$1"
+    [[ " $_SUPPORTED_IMAGE_TYPES " == *" $mime_type "* ]]
+}
+
+# Check if MIME type is a document
+# Usage: is_document_mime <mime_type>
+# Returns: 0 if document, 1 otherwise
+is_document_mime() {
+    local mime_type="$1"
+    [[ " $_SUPPORTED_DOCUMENT_TYPES " == *" $mime_type "* ]]
+}
+
+# Check if MIME type is audio
+# Usage: is_audio_mime <mime_type>
+# Returns: 0 if audio, 1 otherwise
+is_audio_mime() {
+    local mime_type="$1"
+    [[ " $_SUPPORTED_AUDIO_TYPES " == *" $mime_type "* ]]
+}
+
+# Check if MIME type is video
+# Usage: is_video_mime <mime_type>
+# Returns: 0 if video, 1 otherwise
+is_video_mime() {
+    local mime_type="$1"
+    [[ " $_SUPPORTED_VIDEO_TYPES " == *" $mime_type "* ]]
+}
+
+# Check if file is binary (needs base64 encoding)
+# Usage: is_binary_file <file_path>
+# Returns: 0 if binary, 1 if text
+is_binary_file() {
+    local file_path="$1"
+    local mime_type
+    mime_type=$(detect_mime_type "$file_path") || return 1
+    
+    # Text files don't need encoding
+    [[ "$mime_type" == text/* ]] && return 1
+    
+    # Everything else is treated as binary
+    return 0
+}
+
+# Encode file to base64
+# Usage: encode_file_base64 <file_path>
+# Returns: base64 encoded string
+encode_file_base64() {
+    local file_path="$1"
+    base64 -w 0 "$file_path"
+}
+
+# Get content type category for a file
+# Usage: get_content_category <file_path>
+# Returns: "image", "document", "audio", "video", or "text"
+get_content_category() {
+    local file_path="$1"
+    local mime_type
+    mime_type=$(detect_mime_type "$file_path") || return 1
+    
+    if is_image_mime "$mime_type"; then
+        echo "image"
+    elif is_document_mime "$mime_type"; then
+        echo "document"
+    elif is_audio_mime "$mime_type"; then
+        echo "audio"
+    elif is_video_mime "$mime_type"; then
+        echo "video"
+    elif [[ "$mime_type" == text/* ]]; then
+        echo "text"
+    else
+        # Unknown types default to binary/attachment
+        echo "binary"
+    fi
+}
+
+# Build content array for multimodal messages
+# This creates a JSON array with text and media content
+# Usage: build_mixed_content <prompt> <file1> [file2] [file3] ...
+# Returns: JSON array string (outputs to stdout)
+build_mixed_content() {
+    local prompt="$1"
+    shift
+    local -a files=("$@")
+    local has_output=0
+    
+    # Build text content first (combining prompt with any text files)
+    local full_text="$prompt"
+    
+    # Process text files and append to text
+    for file_path in "${files[@]}"; do
+        if [[ ! -f "$file_path" ]]; then
+            log "Warning: Attachment not found: $file_path" -1 >&2
+            continue
+        fi
+        
+        if [[ ! -r "$file_path" ]]; then
+            log "Warning: Cannot read attachment: $file_path" -1 >&2
+            continue
+        fi
+        
+        local category
+        category=$(get_content_category "$file_path")
+        
+        if [[ "$category" == "text" ]]; then
+            local file_content
+            file_content=$(cat "$file_path")
+            full_text="${full_text}
+
+--- Attached file: $(basename "$file_path") ---
+${file_content}
+--- End of $(basename "$file_path") ---"
+        fi
+    done
+    
+    # Count binary files
+    local binary_count=0
+    for file_path in "${files[@]}"; do
+        local category
+        category=$(get_content_category "$file_path")
+        [[ "$category" != "text" && "$category" != "binary" ]] && ((binary_count++))
+    done
+    
+    # Start JSON array
+    printf '['
+    
+    # Output text element if we have text
+    if [[ -n "$full_text" ]]; then
+        printf '\n{"type": "text", "text": '
+        printf '%s' "$full_text" | jq -Rs '.'
+        printf '}'
+        has_output=1
+    fi
+    
+    # Process binary files
+    local current_idx=0
+    for file_path in "${files[@]}"; do
+        local category
+        category=$(get_content_category "$file_path")
+        
+        if [[ "$category" != "text" && "$category" != "binary" ]]; then
+            local mime_type
+            mime_type=$(detect_mime_type "$file_path")
+            
+            # Add comma if we already output something
+            if [[ $has_output -eq 1 ]]; then
+                printf ','
+            fi
+            has_output=1
+            
+            # Output the image_url element with embedded base64
+            printf '\n{"type": "image_url", "image_url": {"url": "data:%s;base64,' "$mime_type"
+            encode_file_base64 "$file_path"
+            printf '"}, "mime_type": "%s"}' "$mime_type"
+            
+            ((current_idx++))
+        fi
+    done
+    
+    # Close JSON array
+    printf '\n]\n'
+}
+
+# Check if provider supports multimodal content
+# Usage: provider_supports_multimodal <provider_name>
+# Returns: 0 if supported, 1 otherwise
+provider_supports_multimodal() {
+    local provider_name="$1"
+    
+    case "$provider_name" in
+        openai|openrouter|anthropic)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Format content array for specific provider
+# Usage: format_content_for_provider <provider_name>
+# Reads content array from stdin
+# Returns: Formatted content array for the provider (outputs to stdout)
+format_content_for_provider() {
+    local provider_name="$1"
+    
+    case "$provider_name" in
+        anthropic)
+            # For anthropic, convert image_url to image with source
+            # Use temp file to avoid buffering issues
+            local tmp_input
+            tmp_input=$(mktemp)
+            cat > "$tmp_input"
+            
+            # Process with jq
+            jq '[.[] | 
+                if .type == "image_url" then
+                    {
+                        type: "image",
+                        source: {
+                            type: "base64",
+                            media_type: (.mime_type // "image/jpeg"),
+                            data: (.image_url.url | split(";base64,")[1])
+                        }
+                    }
+                else
+                    del(.mime_type)
+                end]' "$tmp_input"
+            
+            rm -f "$tmp_input"
+            ;;
+        *)
+            # OpenAI/OpenRouter - just remove mime_type field
+            jq '[.[] | del(.mime_type)]'
+            ;;
+    esac
+}

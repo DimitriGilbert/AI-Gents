@@ -35,6 +35,7 @@ fi
 # @parseArger opt top_logprobs "top_logprobs param for http request"
 # @parseArger opt response_format "response_format param for http request"
 # @parseArger opt structured_outputs "structured_outputs param for http request"
+# @parseArger opt attach "text file(s) to attach to the prompt" --repeat --complete "file"
 # @parseArger flag safe-mode "Disable command execution (!#command;) for safety"
 # @parseArger-declarations-end
 
@@ -95,6 +96,7 @@ _arg_logprobs=
 _arg_top_logprobs=
 _arg_response_format=
 _arg_structured_outputs=
+_arg_attach=()
 # FLAGS
 _arg_safe_mode="off"
 # NESTED
@@ -132,11 +134,12 @@ print_help()
 	echo -e "	--logit_bias <logit_bias>: logit_bias param for http request"
 	echo -e "	--logprobs <logprobs>: logprobs param for http request"
 	echo -e "	--top_logprobs <top_logprobs>: top_logprobs param for http request"
-		echo -e "	--response_format <response_format>: response_format param for http request"
-		echo -e "	--structured_outputs <structured_outputs>: structured_outputs param for http request"
-		echo -e "	--safe-mode|--no-safe-mode: Disable command execution (!#command;) for safety, off by default (use --safe-mode to turn it on)"
-		echo -e "Usage :
-	$0 <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--user <value>] [--ai-name <value>] [--title <value>] [--log <value>] [--tools <value>] [--tool_choice <value>] [--max_tokens <value>] [--temperature <value>] [--top_p <value>] [--stop <value>] [--frequency_penalty <value>] [--presence_penalty <value>] [--seed <value>] [--logit_bias <value>] [--logprobs <value>] [--top_logprobs <value>] [--response_format <value>] [--structured_outputs <value>]";
+	echo -e "	--response_format <response_format>: response_format param for http request"
+	echo -e "	--structured_outputs <structured_outputs>: structured_outputs param for http request"
+	echo -e "	--attach <attach>: text file(s) to attach to the prompt, repeatable"
+	echo -e "	--safe-mode|--no-safe-mode: Disable command execution (!#command;) for safety"
+	echo -e "Usage :
+	$0 <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--user <value>] [--ai-name <value>] [--title <value>] [--log <value>] [--tools <value>] [--tool_choice <value>] [--max_tokens <value>] [--temperature <value>] [--top_p <value>] [--stop <value>] [--frequency_penalty <value>] [--presence_penalty <value>] [--seed <value>] [--logit_bias <value>] [--logprobs <value>] [--top_logprobs <value>] [--response_format <value>] [--structured_outputs <value>] [--attach <value>] [--[no-]safe-mode]";
 	fi
 
 }
@@ -395,17 +398,26 @@ parse_commandline()
 				_arg_structured_outputs="$2"
 				shift
 				;;
-		--structured_outputs=*)
-			_arg_structured_outputs="${_key##--structured_outputs=}"
-			;;
-		--safe-mode)
-			_arg_safe_mode="on"
-			;;
-		--no-safe-mode)
-			_arg_safe_mode="off"
-			;;
-		
-		-h|--help)
+			--structured_outputs=*)
+				_arg_structured_outputs="${_key##--structured_outputs=}"
+				;;
+			
+			--attach)
+				test $# -lt 2 && die "Missing value for the option: '$_key'" 1
+				_arg_attach+=("$2")
+				shift
+				;;
+			--attach=*)
+				_arg_attach+=("${_key##--attach=}")
+				;;
+			
+			--safe-mode)
+				_arg_safe_mode="on"
+				;;
+			--no-safe-mode)
+				_arg_safe_mode="off"
+				;;
+			-h|--help)
 				print_help;
 				exit 0;
 				;;
@@ -414,22 +426,22 @@ parse_commandline()
 				exit 0;
 				;;
 			--verbose)
-					if [ $# -lt 2 ];then
-						_verbose_level="$((_verbose_level + 1))";
-					else
-						_verbose_level="$2";
-						shift;
-					fi
-					;;
-				--quiet)
-					if [ $# -lt 2 ];then
-						_verbose_level="$((_verbose_level - 1))";
-					else
-						_verbose_level="-$2";
-						shift;
-					fi
-					;;
-				
+				if [ $# -lt 2 ];then
+					_verbose_level="$((_verbose_level + 1))";
+				else
+					_verbose_level="$2";
+					shift;
+				fi
+				;;
+			--quiet)
+				if [ $# -lt 2 ];then
+					_verbose_level="$((_verbose_level - 1))";
+				else
+					_verbose_level="-$2";
+					shift;
+				fi
+				;;
+			
 				*)
 				_last_positional="$1"
 				_positionals+=("$_last_positional")
@@ -462,6 +474,11 @@ assign_positional_args()
 	for _positional_name in ${_positional_names};do
 		test $# -gt 0 || break;
 		eval "if [ \"\$_one_of${_positional_name}\" != \"\" ];then [[ \"\${_one_of${_positional_name}[*]}\" =~ \"\${1}\" ]];fi" || die "${_positional_name} must be one of: $(eval "echo \"\${_one_of${_positional_name}[*]}\"")" 1;
+		local _match_var="_match${_positional_name}";
+		local _regex="${!_match_var}";
+		if [ -n "$_regex" ]; then
+			[[ "${1}" =~ $_regex ]] || die "${_positional_name} does not match pattern: $_regex"
+		fi
 		eval "$_positional_name=\${1}" || die "Error during argument parsing, possibly an ParseArger bug." 1;
 		shift;
 	done
@@ -498,6 +515,8 @@ print_debug()
 	echo -e "	top_logprobs: ${_arg_top_logprobs}";
 	echo -e "	response_format: ${_arg_response_format}";
 	echo -e "	structured_outputs: ${_arg_structured_outputs}";
+	echo -e "	attach: ${_arg_attach[*]}";
+	echo -e "	safe-mode: ${_arg_safe_mode}";
 
 }
 
@@ -514,6 +533,7 @@ trap on_interrupt INT;
 
 
 
+
 # @parseArger-parsing-end
 # print_debug "$@"
 # @parseArger-end
@@ -521,6 +541,7 @@ trap on_interrupt INT;
 source "$_SCRIPT_DIR/common"
 source "$_SCRIPT_DIR/lib/validation"
 source "$_SCRIPT_DIR/lib/security"
+source "$_SCRIPT_DIR/lib/attachments"
 
 # Initialize security (empty blacklist by default)
 load_command_blacklist
@@ -528,6 +549,40 @@ load_command_blacklist
 # Validate LLM parameters
 if ! validate_all_llm_params; then
 	die "Parameter validation failed" 1
+fi
+
+# Process attached files
+# Check if we have binary attachments
+_has_binary_attachments=0
+
+if [ "${#_arg_attach[@]}" -gt 0 ]; then
+	# Validate all attachments exist and are readable
+	for attach_file in "${_arg_attach[@]}"; do
+		if [ ! -f "$attach_file" ]; then
+			die "Attached file not found: $attach_file" 1
+		fi
+		if [ ! -r "$attach_file" ]; then
+			die "Cannot read attached file: $attach_file" 1
+		fi
+		# Check if any attachment is binary
+		if is_binary_file "$attach_file"; then
+			_has_binary_attachments=1
+		fi
+	done
+	
+	# Only inline text files (binary files are handled by ask command)
+	if [ "$_has_binary_attachments" -eq 0 ]; then
+		# All text files - use legacy inlining behavior
+		for attach_file in "${_arg_attach[@]}"; do
+			file_content=$(cat "$attach_file")
+			_arg_prompt="$_arg_prompt
+
+--- Attached file: $(basename "$attach_file") ---
+$file_content
+--- End of $(basename "$attach_file") ---"
+		done
+	fi
+	# Binary attachments are passed to ask command which will handle them
 fi
 
 # Create log file if title is provided or logging is enabled
@@ -591,7 +646,12 @@ if [ "$_arg_prompt" != "" ]; then
     printf "%s > " "$_arg_ai_name"
     local safe_mode_flag=""
     [[ "$_arg_safe_mode" == "on" ]] && safe_mode_flag="--safe-mode"
-    response=$("$_SCRIPT_DIR/ask" --stream "$_arg_prompt" ${_arg_api:+--api "$_arg_api"} ${_arg_api_key:+--api-key "$_arg_api_key"} ${_arg_model:+--model "$_arg_model"} ${_arg_system:+--system "$_arg_system"} ${_arg_provider:+--provider "$_arg_provider"} $safe_mode_flag | tee /dev/tty)
+    # Build attach arguments
+    local attach_args=""
+    for attach_file in "${_arg_attach[@]}"; do
+        attach_args="$attach_args --attach \"$attach_file\""
+    done
+    response=$("$_SCRIPT_DIR/ask" --stream "$_arg_prompt" ${_arg_api:+--api "$_arg_api"} ${_arg_api_key:+--api-key "$_arg_api_key"} ${_arg_model:+--model "$_arg_model"} ${_arg_system:+--system "$_arg_system"} ${_arg_provider:+--provider "$_arg_provider"} $safe_mode_flag $attach_args | tee /dev/tty)
     end_time=$(date +%s)
     gen_time=$((end_time - start_time))
     
