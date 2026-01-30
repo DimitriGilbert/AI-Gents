@@ -589,7 +589,9 @@ if [ "$_arg_prompt" != "" ]; then
     response=""
     # Execute ask command and capture its output while allowing it to stream to terminal
     printf "%s > " "$_arg_ai_name"
-    response=$("$_SCRIPT_DIR/ask" --stream "$_arg_prompt" ${_arg_api:+--api "$_arg_api"} ${_arg_api_key:+--api-key "$_arg_api_key"} ${_arg_model:+--model "$_arg_model"} ${_arg_system:+--system "$_arg_system"} ${_arg_provider:+--provider "$_arg_provider"} ${_arg_safe_mode:+--safe-mode} | tee /dev/tty)
+    local safe_mode_flag=""
+    [[ "$_arg_safe_mode" == "on" ]] && safe_mode_flag="--safe-mode"
+    response=$("$_SCRIPT_DIR/ask" --stream "$_arg_prompt" ${_arg_api:+--api "$_arg_api"} ${_arg_api_key:+--api-key "$_arg_api_key"} ${_arg_model:+--model "$_arg_model"} ${_arg_system:+--system "$_arg_system"} ${_arg_provider:+--provider "$_arg_provider"} $safe_mode_flag | tee /dev/tty)
     end_time=$(date +%s)
     gen_time=$((end_time - start_time))
     
