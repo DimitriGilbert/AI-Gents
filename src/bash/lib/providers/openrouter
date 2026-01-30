@@ -1,0 +1,117 @@
+#!/bin/bash
+#
+# OpenRouter Provider Plugin for AI-Gents
+# https://openrouter.ai/
+#
+
+# Source base interface
+# shellcheck source=_base
+source "${_SCRIPT_DIR}/lib/providers/_base"
+
+# Provider metadata
+PROVIDER_NAME="openrouter"
+PROVIDER_URL="https://openrouter.ai/api/v1"
+PROVIDER_DEFAULT_MODEL="${AI_OPENROUTER_MODEL:-meta-llama/llama-3.2-1b-instruct:free}"
+PROVIDER_API_KEY_ENV="AI_OPENROUTER_API_KEY"
+
+# Override: Get API base URL (with custom host support)
+provider_get_url() {
+    echo "${AI_OPENROUTER_HOST:-https://openrouter.ai/api/v1}"
+}
+
+# Override: Parse streaming chunk with think tag support
+# OpenRouter passes through provider-specific formats
+provider_parse_stream_chunk() {
+    local chunk="$1"
+    local content
+    
+    # Check for error first
+    if echo "$chunk" | jq -e '.error' >/dev/null 2>&1; then
+        return 1
+    fi
+    
+    # Extract content
+    content=$(echo "$chunk" | jq -r '.choices[0].delta.content // ""')
+    
+    # Handle special characters and formatting
+    content="${content//\\\"/\"}"
+    content="${content//\\n/$'\n'}"
+    content="${content//\\t/$'\t'}"
+    
+    # Handle think tags (various formats from different providers)
+    content="${content//<thinking>/\\e[38;5;4m}"
+    content="${content//<\\/thinking>/\\e[0m}"
+    content="${content//◁think▷/\\e[38;5;4m}"
+    content="${content//◁\\/think▷/\\e[0m}"
+    
+    printf '%b' "$content"
+}
+
+# Override: Build payload with OpenRouter-specific headers support
+provider_build_payload() {
+    local model="$1"
+    local messages_json="$2"
+    local stream="$3"
+    shift 3
+    
+    # Ensure model is lowercase (OpenRouter convention)
+    model="${model,,}"
+    
+    # Start with base payload
+    local payload
+    payload=$(jq -n \
+        --arg model "$model" \
+        --argjson messages "$messages_json" \
+        --argjson stream "$stream" \
+        '{model: $model, messages: $messages, stream: $stream}')
+    
+    # Add extra parameters
+    for param in "$@"; do
+        if [[ "$param" =~ ^([^=]+)=(.*)$ ]]; then
+            local key="${BASH_REMATCH[1]}"
+            local value="${BASH_REMATCH[2]}"
+            
+            # Handle special OpenRouter parameters
+            case "$key" in
+                transforms|plugins|route)
+                    # These are OpenRouter-specific top-level params
+                    if [[ "$value" == "true" || "$value" == "false" ]]; then
+                        payload=$(echo "$payload" | jq --arg key "$key" --argjson val "$value" '. + {($key): $val}')
+                    else
+                        payload=$(echo "$payload" | jq --arg key "$key" --arg val "$value" '. + {($key): $val}')
+                    fi
+                    ;;
+                *)
+                    # Standard parameters
+                    if [[ "$value" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+                        payload=$(echo "$payload" | jq --arg key "$key" --argjson val "$value" '. + {($key): $val}')
+                    elif [[ "$value" == "true" || "$value" == "false" ]]; then
+                        payload=$(echo "$payload" | jq --arg key "$key" --argjson val "$value" '. + {($key): $val}')
+                    else
+                        payload=$(echo "$payload" | jq --arg key "$key" --arg val "$value" '. + {($key): $val}')
+                    fi
+                    ;;
+            esac
+        fi
+    done
+    
+    echo "$payload"
+}
+
+# Override: Get headers with OpenRouter-specific headers
+provider_get_headers() {
+    local api_key="$1"
+    local -n headers="$2"
+    
+    headers=(-H "Content-Type: application/json")
+    
+    if [[ -n "$api_key" ]]; then
+        headers+=(-H "Authorization: Bearer ${api_key}")
+    fi
+    
+    # Add HTTP-Referer header (OpenRouter tracks usage by referer)
+    headers+=(-H "HTTP-Referer: https://github.com/anomalyco/ai-gents")
+    
+    # Add X-Title header (application name)
+    headers+=(-H "X-Title: AI-Gents")
+}

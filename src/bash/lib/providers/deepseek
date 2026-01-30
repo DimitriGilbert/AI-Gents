@@ -1,0 +1,12 @@
+#!/bin/bash
+#
+# DeepSeek Provider Plugin for AI-Gents
+# https://deepseek.com/
+#
+
+source "${_SCRIPT_DIR}/lib/providers/_base"
+
+PROVIDER_NAME="deepseek"
+PROVIDER_URL="https://api.deepseek.com"
+PROVIDER_DEFAULT_MODEL="${AI_DEEPSEEK_MODEL:-deepseek-v3}"
+PROVIDER_API_KEY_ENV="AI_DEEPSEEK_API_KEY"

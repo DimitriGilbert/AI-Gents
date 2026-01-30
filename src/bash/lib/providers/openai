@@ -1,0 +1,150 @@
+#!/bin/bash
+#
+# OpenAI Provider Plugin for AI-Gents
+# https://platform.openai.com/
+#
+
+# Source base interface
+# shellcheck source=_base
+source "${_SCRIPT_DIR}/lib/providers/_base"
+
+# Provider metadata
+PROVIDER_NAME="openai"
+PROVIDER_URL="https://api.openai.com/v1"
+PROVIDER_DEFAULT_MODEL="${AI_OPENAI_MODEL:-gpt-4o-mini}"
+PROVIDER_API_KEY_ENV="AI_OPENAI_API_KEY"
+
+# Override: Get API base URL (with custom host support)
+provider_get_url() {
+    echo "https://${AI_OPENAI_HOST:-api.openai.com}/v1"
+}
+
+# Override: Build payload with OpenAI-specific handling
+provider_build_payload() {
+    local model="$1"
+    local messages_json="$2"
+    local stream="$3"
+    shift 3
+    
+    # Start with base payload
+    local payload
+    payload=$(jq -n \
+        --arg model "$model" \
+        --argjson messages "$messages_json" \
+        --argjson stream "$stream" \
+        '{model: $model, messages: $messages, stream: $stream}')
+    
+    # Add extra parameters with OpenAI-specific validation
+    for param in "$@"; do
+        if [[ "$param" =~ ^([^=]+)=(.*)$ ]]; then
+            local key="${BASH_REMATCH[1]}"
+            local value="${BASH_REMATCH[2]}"
+            
+            case "$key" in
+                temperature)
+                    # OpenAI: 0 to 2
+                    if (( $(echo "$value >= 0 && $value <= 2" | bc -l) )); then
+                        payload=$(echo "$payload" | jq --argjson val "$value" '. + {temperature: $val}')
+                    fi
+                    ;;
+                top_p)
+                    # OpenAI: 0 to 1
+                    if (( $(echo "$value >= 0 && $value <= 1" | bc -l) )); then
+                        payload=$(echo "$payload" | jq --argjson val "$value" '. + {top_p: $val}')
+                    fi
+                    ;;
+                max_tokens)
+                    # OpenAI: positive integer
+                    if [[ "$value" =~ ^[0-9]+$ ]]; then
+                        payload=$(echo "$payload" | jq --argjson val "$value" '. + {max_tokens: $val}')
+                    fi
+                    ;;
+                frequency_penalty|presence_penalty)
+                    # OpenAI: -2 to 2
+                    if (( $(echo "$value >= -2 && $value <= 2" | bc -l) )); then
+                        payload=$(echo "$payload" | jq --arg key "$key" --argjson val "$value" '. + {($key): $val}')
+                    fi
+                    ;;
+                seed)
+                    # Integer seed
+                    if [[ "$value" =~ ^[0-9]+$ ]]; then
+                        payload=$(echo "$payload" | jq --argjson val "$value" '. + {seed: $val}')
+                    fi
+                    ;;
+                response_format|tool_choice)
+                    # JSON objects
+                    payload=$(echo "$payload" | jq --arg key "$key" --argjson val "$value" '. + {($key): $val}')
+                    ;;
+                tools)
+                    # Tools array
+                    payload=$(echo "$payload" | jq --argjson val "$value" '. + {tools: $val}')
+                    ;;
+                *)
+                    # Standard parameters
+                    if [[ "$value" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+                        payload=$(echo "$payload" | jq --arg key "$key" --argjson val "$value" '. + {($key): $val}')
+                    elif [[ "$value" == "true" || "$value" == "false" ]]; then
+                        payload=$(echo "$payload" | jq --arg key "$key" --argjson val "$value" '. + {($key): $val}')
+                    else
+                        payload=$(echo "$payload" | jq --arg key "$key" --arg val "$value" '. + {($key): $val}')
+                    fi
+                    ;;
+            esac
+        fi
+    done
+    
+    echo "$payload"
+}
+
+# Override: Parse streaming chunk
+provider_parse_stream_chunk() {
+    local chunk="$1"
+    local content
+    
+    # Check for error first
+    if echo "$chunk" | jq -e '.error' >/dev/null 2>&1; then
+        return 1
+    fi
+    
+    # Extract content from delta
+    content=$(echo "$chunk" | jq -r '.choices[0].delta.content // ""')
+    
+    # Handle special characters
+    content="${content//\\\"/\"}"
+    content="${content//\\n/$'\n'}"
+    content="${content//\\t/$'\t'}"
+    
+    printf '%b' "$content"
+}
+
+# Override: Parse function/tool calls from response
+provider_parse_function_call() {
+    local response="$1"
+    
+    # Check for tool_calls (new format) or function_call (old format)
+    local tool_calls
+    tool_calls=$(echo "$response" | jq -r '.choices[0].message.tool_calls // empty')
+    
+    if [[ -n "$tool_calls" ]]; then
+        echo "$tool_calls"
+        return 0
+    fi
+    
+    # Legacy function_call format
+    echo "$response" | jq -r '.choices[0].message.function_call // empty'
+}
+
+# Override: Check if response has tool/function call
+provider_has_function_call() {
+    local response="$1"
+    
+    if echo "$response" | jq -e '.choices[0].message.tool_calls' >/dev/null 2>&1; then
+        return 0
+    fi
+    
+    if echo "$response" | jq -e '.choices[0].message.function_call' >/dev/null 2>&1; then
+        return 0
+    fi
+    
+    return 1
+}

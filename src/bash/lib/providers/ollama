@@ -1,0 +1,16 @@
+#!/bin/bash
+#
+# Ollama Provider Plugin for AI-Gents
+# https://ollama.com/
+#
+
+source "${_SCRIPT_DIR}/lib/providers/_base"
+
+PROVIDER_NAME="ollama"
+PROVIDER_URL="http://localhost:11434/v1"
+PROVIDER_DEFAULT_MODEL="${AI_OLLAMA_MODEL:-llama-3.2-1b-instruct}"
+PROVIDER_API_KEY_ENV="AI_OLLAMA_API_KEY"
+
+provider_get_url() {
+    echo "http://${AI_OLLAMA_HOST:-localhost}:${AI_OLLAMA_PORT:-11434}/v1"
+}

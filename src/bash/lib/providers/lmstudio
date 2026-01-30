@@ -1,0 +1,16 @@
+#!/bin/bash
+#
+# LM Studio Provider Plugin for AI-Gents
+# https://lmstudio.ai/
+#
+
+source "${_SCRIPT_DIR}/lib/providers/_base"
+
+PROVIDER_NAME="lmstudio"
+PROVIDER_URL="http://localhost:1234/v1"
+PROVIDER_DEFAULT_MODEL="${AI_LMSTUDIO_MODEL:-llama-3.2-1b-instruct}"
+PROVIDER_API_KEY_ENV="AI_LMSTUDIO_API_KEY"
+
+provider_get_url() {
+    echo "http://${AI_LMSTUDIO_HOST:-localhost}:${AI_LMSTUDIO_PORT:-1234}/v1"
+}

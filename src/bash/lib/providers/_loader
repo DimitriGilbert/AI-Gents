@@ -1,0 +1,156 @@
+#!/bin/bash
+#
+# Provider Loader for AI-Gents
+# Dynamically discovers and loads provider plugins
+#
+
+# Provider registry
+_AVAILABLE_PROVIDERS=()
+_LOADED_PROVIDERS=()
+
+# Get providers directory
+_get_providers_dir() {
+    echo "${_SCRIPT_DIR}/lib/providers"
+}
+
+# Discover available providers
+# Scans the providers directory for valid provider plugins
+provider_discover() {
+    local providers_dir
+    providers_dir="$(_get_providers_dir)"
+    _AVAILABLE_PROVIDERS=()
+    
+    if [[ ! -d "$providers_dir" ]]; then
+        log "Providers directory not found: $providers_dir" -2
+        return 1
+    fi
+    
+    # Find all executable files in providers dir (excluding _base)
+    while IFS= read -r -d '' provider_file; do
+        local provider_name
+        provider_name=$(basename "$provider_file")
+        
+        # Skip base interface and non-executable files
+        [[ "$provider_name" == "_base" ]] && continue
+        [[ ! -x "$provider_file" ]] && continue
+        
+        _AVAILABLE_PROVIDERS+=("$provider_name")
+    done < <(find "$providers_dir" -maxdepth 1 -type f -print0 2>/dev/null)
+    
+    if [[ "${_verbose_level:-0}" -ge 2 ]]; then
+        log "Discovered providers: ${_AVAILABLE_PROVIDERS[*]}" 2
+    fi
+}
+
+# Check if provider is available
+# Usage: provider_is_registered <name>
+provider_is_registered() {
+    local name="$1"
+    
+    # Check if already discovered, if not, discover
+    if [[ ${#_AVAILABLE_PROVIDERS[@]} -eq 0 ]]; then
+        provider_discover
+    fi
+    
+    for provider in "${_AVAILABLE_PROVIDERS[@]}"; do
+        [[ "$provider" == "$name" ]] && return 0
+    done
+    
+    return 1
+}
+
+# Load a provider
+# Usage: provider_load <name>
+# Sources the provider file and makes its functions available
+provider_load() {
+    local name="$1"
+    local providers_dir
+    providers_dir="$(_get_providers_dir)"
+    local provider_file="${providers_dir}/${name}"
+    
+    # Check if provider exists
+    if [[ ! -f "$provider_file" ]]; then
+        # Fallback to legacy provider detection
+        log "Provider plugin not found: $name, falling back to legacy mode" -1
+        return 1
+    fi
+    
+    # Check if already loaded
+    for loaded in "${_LOADED_PROVIDERS[@]}"; do
+        if [[ "$loaded" == "$name" ]]; then
+            return 0
+        fi
+    done
+    
+    # Source the provider
+    # shellcheck source=/dev/null
+    source "$provider_file"
+    
+    # Verify it loaded properly
+    if [[ -z "$(provider_get_name)" ]]; then
+        log "Provider loaded but name not set: $name" -2
+        return 1
+    fi
+    
+    _LOADED_PROVIDERS+=("$name")
+    
+    if [[ "${_verbose_level:-0}" -ge 2 ]]; then
+        log "Loaded provider: $name (URL: $(provider_get_url))" 2
+    fi
+    
+    return 0
+}
+
+# Get list of available providers
+# Usage: provider_list_available
+provider_list_available() {
+    if [[ ${#_AVAILABLE_PROVIDERS[@]} -eq 0 ]]; then
+        provider_discover
+    fi
+    
+    printf '%s\n' "${_AVAILABLE_PROVIDERS[@]}"
+}
+
+# Get provider with fallback to legacy
+# Usage: provider_get_or_legacy <name> <fallback_function>
+provider_get_or_legacy() {
+    local name="$1"
+    local fallback_fn="$2"
+    
+    if provider_is_registered "$name" && provider_load "$name"; then
+        return 0
+    fi
+    
+    # Fallback to legacy
+    if [[ -n "$fallback_fn" ]]; then
+        $fallback_fn "$name"
+        return $?
+    fi
+    
+    return 1
+}
+
+# Initialize provider system
+provider_init() {
+    provider_discover
+    
+    if [[ "${_verbose_level:-0}" -ge 1 ]]; then
+        log "Provider system initialized with ${#_AVAILABLE_PROVIDERS[@]} providers" 1
+    fi
+}
+
+# Get currently loaded provider
+# Usage: provider_get_current
+provider_get_current() {
+    if [[ ${#_LOADED_PROVIDERS[@]} -gt 0 ]]; then
+        echo "${_LOADED_PROVIDERS[-1]}"
+    fi
+}
+
+# Unload current provider
+# Usage: provider_unload
+provider_unload() {
+    if [[ ${#_LOADED_PROVIDERS[@]} -gt 0 ]]; then
+        unset "_LOADED_PROVIDERS[-1]"
+    fi
+}

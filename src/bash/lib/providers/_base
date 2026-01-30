@@ -1,0 +1,140 @@
+#!/bin/bash
+#
+# Base Provider Interface for AI-Gents
+# All providers must implement the required functions
+# Providers are sourced, not executed directly
+#
+
+# Provider metadata (must be set by each provider)
+PROVIDER_NAME=""
+PROVIDER_URL=""
+PROVIDER_DEFAULT_MODEL=""
+PROVIDER_API_KEY_ENV=""
+
+# Get provider name
+# Returns: provider identifier string
+provider_get_name() {
+    echo "$PROVIDER_NAME"
+}
+
+# Get API base URL
+# Returns: base URL for API endpoints
+provider_get_url() {
+    echo "$PROVIDER_URL"
+}
+
+# Get default model name
+# Returns: default model identifier
+provider_get_default_model() {
+    echo "$PROVIDER_DEFAULT_MODEL"
+}
+
+# Get environment variable name for API key
+# Returns: env var name (e.g., AI_OPENROUTER_API_KEY)
+provider_get_credential_env() {
+    echo "$PROVIDER_API_KEY_ENV"
+}
+
+# Build request URL for chat completions
+# Usage: provider_get_chat_endpoint
+provider_get_chat_endpoint() {
+    local base_url
+    base_url="$(provider_get_url)"
+    echo "${base_url}/chat/completions"
+}
+
+# Build JSON payload for API request
+# Usage: provider_build_payload <model> <messages_json> <stream> [extra_params...]
+# Returns: JSON payload via stdout
+provider_build_payload() {
+    local model="$1"
+    local messages_json="$2"
+    local stream="$3"
+    shift 3
+    
+    # Start building payload
+    local payload
+    payload=$(jq -n \
+        --arg model "$model" \
+        --argjson messages "$messages_json" \
+        --argjson stream "$stream" \
+        '{model: $model, messages: $messages, stream: $stream}')
+    
+    # Add extra parameters if provided
+    # Extra params are passed as key=value pairs
+    for param in "$@"; do
+        if [[ "$param" =~ ^([^=]+)=(.*)$ ]]; then
+            local key="${BASH_REMATCH[1]}"
+            local value="${BASH_REMATCH[2]}"
+            
+            # Try to parse as number or boolean, otherwise as string
+            if [[ "$value" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+                payload=$(echo "$payload" | jq --arg key "$key" --argjson val "$value" '. + {($key): $val}')
+            elif [[ "$value" == "true" || "$value" == "false" ]]; then
+                payload=$(echo "$payload" | jq --arg key "$key" --argjson val "$value" '. + {($key): $val}')
+            else
+                payload=$(echo "$payload" | jq --arg key "$key" --arg val "$value" '. + {($key): $val}')
+            fi
+        fi
+    done
+    
+    echo "$payload"
+}
+
+# Parse a single streaming chunk
+# Usage: provider_parse_stream_chunk <chunk_json>
+# Returns: content string or empty if no content
+provider_parse_stream_chunk() {
+    local chunk="$1"
+    # Default implementation - providers can override
+    echo "$chunk" | jq -r '.choices[0].delta.content // ""'
+}
+
+# Parse full non-streaming response
+# Usage: provider_parse_response <response_json>
+# Returns: content string
+provider_parse_response() {
+    local response="$1"
+    # Default implementation - providers can override
+    echo "$response" | jq -r '.choices[0].message.content // ""'
+}
+
+# Parse error from response
+# Usage: provider_parse_error <response_json>
+# Returns: error message or empty if no error
+provider_parse_error() {
+    local response="$1"
+    # Default implementation - providers can override
+    echo "$response" | jq -r '.error.message // empty'
+}
+
+# Check if response contains an error
+# Usage: provider_has_error <response_json>
+# Returns: 0 if error, 1 if no error
+provider_has_error() {
+    local response="$1"
+    # Default implementation - providers can override
+    echo "$response" | jq -e '.error' >/dev/null 2>&1
+}
+
+# Format headers for curl command
+# Usage: provider_get_headers <api_key>
+# Returns: array of -H flags via nameref
+provider_get_headers() {
+    local api_key="$1"
+    local -n headers="$2"
+    
+    headers=(-H "Content-Type: application/json")
+    
+    if [[ -n "$api_key" ]]; then
+        headers+=(-H "Authorization: Bearer ${api_key}")
+    fi
+}
+
+# Check if provider is available (has required config)
+# Usage: provider_is_available
+# Returns: 0 if available, 1 if not
+provider_is_available() {
+    # Default: check if URL is configured
+    [[ -n "$(provider_get_url)" ]]
+}

@@ -1,0 +1,84 @@
+#!/bin/bash
+#
+# Anthropic Provider Plugin for AI-Gents
+# https://www.anthropic.com/
+#
+
+source "${_SCRIPT_DIR}/lib/providers/_base"
+
+PROVIDER_NAME="anthropic"
+PROVIDER_URL="https://api.anthropic.com/v1"
+PROVIDER_DEFAULT_MODEL="${AI_ANTHROPIC_MODEL:-claude-3-5-haiku}"
+PROVIDER_API_KEY_ENV="AI_ANTHROPIC_API_KEY"
+
+provider_get_url() {
+    echo "https://${AI_ANTHROPIC_HOST:-api.anthropic.com}/v1"
+}
+
+provider_get_headers() {
+    local api_key="$1"
+    local -n headers="$2"
+    
+    headers=(-H "Content-Type: application/json")
+    
+    if [[ -n "$api_key" ]]; then
+        headers+=(-H "x-api-key: ${api_key}")
+        headers+=(-H "anthropic-version: 2023-06-01")
+    fi
+}
+
+provider_build_payload() {
+    local model="$1"
+    local messages_json="$2"
+    local stream="$3"
+    shift 3
+    
+    # Anthropic uses different message format
+    local payload
+    payload=$(jq -n \
+        --arg model "$model" \
+        --argjson messages "$messages_json" \
+        --argjson stream "$stream" \
+        '{model: $model, messages: $messages, stream: $stream, max_tokens: 4096}')
+    
+    for param in "$@"; do
+        if [[ "$param" =~ ^([^=]+)=(.*)$ ]]; then
+            local key="${BASH_REMATCH[1]}"
+            local value="${BASH_REMATCH[2]}"
+            
+            case "$key" in
+                max_tokens)
+                    payload=$(echo "$payload" | jq --argjson val "$value" '.max_tokens = $val')
+                    ;;
+                temperature)
+                    payload=$(echo "$payload" | jq --argjson val "$value" '. + {temperature: $val}')
+                    ;;
+                top_p|top_k)
+                    payload=$(echo "$payload" | jq --arg key "$key" --argjson val "$value" '. + {($key): $val}')
+                    ;;
+            esac
+        fi
+    done
+    
+    echo "$payload"
+}
+
+provider_parse_stream_chunk() {
+    local chunk="$1"
+    echo "$chunk" | jq -r '.delta.text // .completion // ""'
+}
+
+provider_parse_response() {
+    local response="$1"
+    echo "$response" | jq -r '.content[0].text // .completion // ""'
+}
+
+provider_has_error() {
+    local response="$1"
+    echo "$response" | jq -e '.error' >/dev/null 2>&1
+}
+
+provider_parse_error() {
+    local response="$1"
+    echo "$response" | jq -r '.error.message // .error.type // empty'
+}

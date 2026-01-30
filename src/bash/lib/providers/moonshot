@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# Moonshot AI Provider Plugin for AI-Gents
+# https://www.moonshot.cn/
+#
+
+source "${_SCRIPT_DIR}/lib/providers/_base"
+
+PROVIDER_NAME="moonshot"
+PROVIDER_URL="https://api.moonshot.ai/v1"
+PROVIDER_DEFAULT_MODEL="${AI_MOONSHOT_MODEL:-moonshot-v1-8k}"
+PROVIDER_API_KEY_ENV="AI_MOONSHOT_API_KEY"
+
+provider_parse_stream_chunk() {
+    local chunk="$1"
+    local content
+    
+    content=$(echo "$chunk" | jq -r '.choices[0].delta.content // ""')
+    
+    # Handle special characters
+    content="${content//\\\"/\"}"
+    content="${content//\\n/$'\n'}"
+    content="${content//\\t/$'\t'}"
+    
+    # Moonshot uses special think tags
+    content="${content//◁think▷/\\e[38;5;4m}"
+    content="${content//◁\\/think▷/\\e[0m}"
+    
+    printf '%b' "$content"
+}
