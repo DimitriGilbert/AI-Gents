@@ -183,10 +183,12 @@ export AI_USER_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ai-gents"
 
 The `site/` directory contains a Next.js 16 application using the T3 Stack:
 
+**IMPORTANT: All site/ commands below MUST be run from the `site/` directory.**
+
 ### Site Commands
 
 ```bash
-# Development (run from site/ directory)
+# Development
 cd site && bun run dev
 
 # Build

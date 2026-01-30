@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useTheme } from "next-themes";
 import {
   Menubar,
@@ -9,6 +9,8 @@ import {
 } from "~/components/ui/menubar";
 import { toast } from "sonner";
 
+let entryIdCounter = 0;
+
 export type OutputContent = {
   delay?: number;
   placeholder?: string | React.ReactNode;
@@ -16,6 +18,7 @@ export type OutputContent = {
 };
 
 export type DisplayEntry = {
+  id: string;
   type: "command" | "output";
   content: string | React.ReactNode;
   done?: boolean;
@@ -38,31 +41,26 @@ export type TerminableProps = {
   defaultTypingSpeed?: number;
   defaultTypingRandom?: number;
   defaultOutputSpeed?: number;
-  width?: string; // Tailwind width class
-  height?: string; // Tailwind height class
+  width?: string;
+  height?: string;
   termPrompt?: string | React.ReactNode;
   startLine?: string | React.ReactNode;
-  backgroundColor?: string; // Tailwind or custom color
-  promptColor?: string; // Tailwind or custom color
-  outputColor?: string; // Tailwind or custom color
+  backgroundColor?: string;
+  promptColor?: string;
+  outputColor?: string;
   greenMenu?: React.ReactNode;
   yellowMenu?: React.ReactNode;
   redMenu?: React.ReactNode;
   title?: string | React.ReactNode;
-  commandDelay?: number; // New prop for delay between commands
-  allowCopy?: boolean; // New prop to control copy functionality
+  commandDelay?: number;
+  allowCopy?: boolean;
   start?: boolean;
 }
-
-// Add new types for refs
-type CommandProcessingState = {
-  isProcessing: boolean;
-  currentIndex: number;
-};
 
 export default function Terminable({
   commands = [],
   defaultTypingSpeed = 50,
+  defaultTypingRandom = 0,
   defaultOutputSpeed = 30,
   width = "w-full max-w-[800px]",
   height = "min-h-[300px] max-h-[500px]",
@@ -81,218 +79,228 @@ export default function Terminable({
 }: TerminableProps) {
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [display, setDisplay] = useState<DisplayEntry[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
   
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  
-  const isXP = theme === "xp";
-  const [display, setDisplay] = useState<DisplayEntry[]>([
-    { type: "output", content: startLine },
-  ]);
-
-  // Remove the isProcessing state and rely only on processingStateRef
-  const processingStateRef = useRef<CommandProcessingState>({
-    isProcessing: false,
-    currentIndex: 0,
-  });
-
+  const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const terminalRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef<boolean>(false);
 
-  // Calculate typing delay with useMemo
-  const calculateTypingDelay = useMemo(() => {
-    return (baseSpeed: number, randomFactor = 0) => {
-      const randomVariation = Math.random() * (baseSpeed * (randomFactor / 100));
-      return Math.max(10, baseSpeed + (Math.random() > 0.5 ? randomVariation : -randomVariation));
-    };
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
-  // Auto-scroll logic
+  useEffect(() => {
+    if (startLine) {
+      setDisplay([{ 
+        id: `entry-${++entryIdCounter}`, 
+        type: "output", 
+        content: startLine 
+      }]);
+    }
+  }, [startLine]);
+
+  // Cleanup function
+  const clearAllTimeouts = useCallback(() => {
+    timeoutsRef.current.forEach(clearTimeout);
+    timeoutsRef.current = [];
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearAllTimeouts();
+    };
+  }, [clearAllTimeouts]);
+
+  const calculateTypingDelay = useCallback((baseSpeed: number, randomFactor = 0) => {
+    const randomVariation = Math.random() * (baseSpeed * (randomFactor / 100));
+    return Math.max(10, baseSpeed + (Math.random() > 0.5 ? randomVariation : -randomVariation));
+  }, []);
+
+  // Auto-scroll logic - runs after every render
   useEffect(() => {
     if (terminalRef.current && !userScrolledRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
-  }, [display]);
+  });
 
   const handleScroll = useCallback(() => {
     if (!terminalRef.current) return;
-
     const { scrollTop, scrollHeight, clientHeight } = terminalRef.current;
-    const isScrolledToBottom = scrollHeight - scrollTop === clientHeight;
-
-    if (!isScrolledToBottom) {
-      userScrolledRef.current = true;
-    } else {
-      userScrolledRef.current = false;
-    }
+    const isScrolledToBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 10;
+    userScrolledRef.current = !isScrolledToBottom;
   }, []);
 
-  // Separate command processing logic
-  const processCommandOutput = useCallback(
-    async (
-      output: string | React.ReactNode | OutputContent | Array<string | React.ReactNode | OutputContent>,
-      defaultSpeed: number,
-      onBeforeOutput?: () => void,
-    ) => {
-      const outputs = Array.isArray(output) ? output : [output];
+  const sleep = useCallback((ms: number) => {
+    return new Promise<void>((resolve) => {
+      const timeout = setTimeout(resolve, ms);
+      timeoutsRef.current.push(timeout);
+    });
+  }, []);
 
-      for (const line of outputs) {
-        if (!line) continue;
+  const processCommandOutput = useCallback(async (
+    output: string | React.ReactNode | OutputContent | Array<string | React.ReactNode | OutputContent>,
+    defaultSpeed: number,
+    onBeforeOutput?: () => void,
+  ) => {
+    const outputs = Array.isArray(output) ? output : [output];
 
-        await new Promise((resolve) => setTimeout(resolve, defaultSpeed));
+    for (const line of outputs) {
+      if (!line) continue;
 
-        // Handle ReactNode directly
-        if (typeof line !== 'string' && !(line && typeof line === 'object' && 'content' in line)) {
-          onBeforeOutput?.();
-          setDisplay((prev) => [...prev, { type: "output", content: line }]);
-          continue;
-        }
+      await sleep(defaultSpeed);
 
-        if (typeof line === "string") {
-          onBeforeOutput?.();
-          setDisplay((prev) => [...prev, { type: "output", content: line }]);
-          continue;
-        }
-
-        // Handle OutputContent
+      // Handle ReactNode directly (not string or OutputContent)
+      if (typeof line !== 'string' && !(line && typeof line === 'object' && 'content' in line)) {
         onBeforeOutput?.();
-        setDisplay((prev) => [
-          ...prev,
-          { type: "output", content: line.placeholder ?? "" },
-        ]);
-
-        if (line.delay) {
-          await new Promise((resolve) => setTimeout(resolve, line.delay));
-        }
-
-        setDisplay((prev) => {
-          const newDisplay = [...prev];
-          const lastEntry = newDisplay[newDisplay.length - 1];
-          if (lastEntry?.type === "output") {
-            lastEntry.content = line.content;
-          }
-          return newDisplay;
-        });
+        const newId = `entry-${++entryIdCounter}`;
+        setDisplay(prev => [...prev, { id: newId, type: "output", content: line }]);
+        continue;
       }
-    },
-    [],
-  );
 
-  const processCommand = useCallback(
-    async (cmd: CommandEntry) => {
-      if (processingStateRef.current.isProcessing) return;
-      
-      try {
-        processingStateRef.current.isProcessing = true;
-        
-        if (processingStateRef.current.currentIndex > 0) {
-          await new Promise((resolve) => setTimeout(resolve, cmd.delay ?? commandDelay));
-        }
-
-        // Helper function to type a single prompt
-        const typePrompt = async (prompt: string | React.ReactNode) => {
-          // Add command prompt
-          setDisplay((prev) => [...prev, { type: "command", content: "", done: false }]);
-
-          if (typeof prompt !== "string") {
-            setDisplay((prev) => {
-              const lastEntry = prev[prev.length - 1];
-              if (lastEntry?.type === "command") {
-                return [...prev.slice(0, -1), { ...lastEntry, content: prompt, done: true }];
-              }
-              return prev;
-            });
-            return;
-          }
-
-          // Type the command
-          const trimmedPrompt = prompt.trim();
-          let currentContent = "";
-          
-          for (const char of trimmedPrompt) {
-            const delay = calculateTypingDelay(
-              cmd.typingSpeed ?? defaultTypingSpeed,
-              cmd.typingRandom
-            );
-            
-            await new Promise((resolve) => setTimeout(resolve, delay));
-            currentContent += char;
-            
-            setDisplay((prev) => {
-              const lastEntry = prev[prev.length - 1];
-              if (lastEntry?.type === "command") {
-                return [...prev.slice(0, -1), { ...lastEntry, content: currentContent }];
-              }
-              return prev;
-            });
-          }
-
-          // Mark command as done
-          setDisplay((prev) => {
-            const lastEntry = prev[prev.length - 1];
-            if (lastEntry?.type === "command") {
-              return [...prev.slice(0, -1), { ...lastEntry, done: true }];
-            }
-            return prev;
-          });
-        };
-
-        // Process all prompts
-        if (Array.isArray(cmd.prompt)) {
-          for (const prompt of cmd.prompt) {
-            await typePrompt(prompt);
-          }
-        } else {
-          await typePrompt(cmd.prompt);
-        }
-
-        // Process outputs
-        if (cmd.output) {
-          if (cmd.outputDelay) {
-            await new Promise((resolve) => setTimeout(resolve, cmd.outputDelay));
-          }
-          await processCommandOutput(cmd.output, defaultOutputSpeed, cmd.onBeforeOutput);
-        }
-
-        cmd.onDone?.();
-        processingStateRef.current.currentIndex += 1;
-      } catch (error) {
-        console.error('Error processing command:', error);
-        toast.error(error instanceof Error ? error.message : 'Unknown error', { duration: 3000 });
-      } finally {
-        processingStateRef.current.isProcessing = false;
+      // Handle plain string
+      if (typeof line === "string") {
+        onBeforeOutput?.();
+        const newId = `entry-${++entryIdCounter}`;
+        setDisplay(prev => [...prev, { id: newId, type: "output", content: line }]);
+        continue;
       }
-    },
-    [commandDelay, defaultOutputSpeed, defaultTypingSpeed, calculateTypingDelay, processCommandOutput]
-  );
 
-  useEffect(() => {
-    if (start) {
-      const processCommands = async () => {
-        try {
-          while (processingStateRef.current.currentIndex < commands.length) {
-            const cmd = commands[processingStateRef.current.currentIndex];
-            if (cmd) {
-              await processCommand(cmd);
-            } else {
-              processingStateRef.current.currentIndex++;
-            }
-          }
-        } catch (error) {
-          console.error('Error processing commands:', error);
-          toast.error(`Error processing commands: ${error instanceof Error ? error.message : 'Unknown error'}`, { duration: 2000 });
-        }
-      };
-      void processCommands();
+      // Handle OutputContent with placeholder
+      const outputContent = line as OutputContent;
+      onBeforeOutput?.();
+      const placeholderId = `entry-${++entryIdCounter}`;
+      setDisplay(prev => [...prev, { 
+        id: placeholderId, 
+        type: "output", 
+        content: outputContent.placeholder ?? "" 
+      }]);
+
+      if (outputContent.delay) {
+        await sleep(outputContent.delay);
+      }
+
+      // Replace placeholder with actual content - IMMUTABLE UPDATE
+      setDisplay(prev => prev.map(entry => 
+        entry.id === placeholderId 
+          ? { ...entry, content: outputContent.content }
+          : entry
+      ));
     }
-    
-    return () => {
-      processingStateRef.current.isProcessing = false;
-    };
-  }, [start, commands, processCommand]);
+  }, [sleep]);
 
-  // XP Theme styles
+  // Track typing content in ref to avoid excessive re-renders
+  const typePrompt = useCallback(async (
+    prompt: string | React.ReactNode,
+    cmd: CommandEntry
+  ) => {
+    const commandId = `entry-${++entryIdCounter}`;
+    
+    // Add empty command entry
+    setDisplay(prev => [...prev, { 
+      id: commandId, 
+      type: "command", 
+      content: "", 
+      done: false 
+    }]);
+
+    // Handle ReactNode directly
+    if (typeof prompt !== "string") {
+      setDisplay(prev => prev.map(entry => 
+        entry.id === commandId 
+          ? { ...entry, content: prompt, done: true }
+          : entry
+      ));
+      return;
+    }
+
+    // Type the command character by character
+    const trimmedPrompt = prompt.trim();
+    
+    for (let i = 0; i < trimmedPrompt.length; i++) {
+      const delay = calculateTypingDelay(
+        cmd.typingSpeed ?? defaultTypingSpeed,
+        (cmd.typingRandom ?? defaultTypingRandom)
+      );
+      
+      await sleep(delay);
+      
+      const currentContent = trimmedPrompt.slice(0, i + 1);
+      
+      setDisplay(prev => prev.map(entry => 
+        entry.id === commandId 
+          ? { ...entry, content: currentContent }
+          : entry
+      ));
+    }
+
+    // Mark command as done
+    setDisplay(prev => prev.map(entry => 
+      entry.id === commandId 
+        ? { ...entry, done: true }
+        : entry
+    ));
+  }, [defaultTypingSpeed, defaultTypingRandom, calculateTypingDelay, sleep]);
+
+  const processCommand = useCallback(async (cmd: CommandEntry, index: number) => {
+    if (isProcessing) return;
+    
+    try {
+      setIsProcessing(true);
+      
+      // Delay between commands (except first)
+      if (index > 0) {
+        await sleep(cmd.delay ?? commandDelay);
+      }
+
+      // Process all prompts
+      if (Array.isArray(cmd.prompt)) {
+        for (const prompt of cmd.prompt) {
+          await typePrompt(prompt, cmd);
+        }
+      } else {
+        await typePrompt(cmd.prompt, cmd);
+      }
+
+      // Process outputs
+      if (cmd.output) {
+        if (cmd.outputDelay) {
+          await sleep(cmd.outputDelay);
+        }
+        await processCommandOutput(cmd.output, defaultOutputSpeed, cmd.onBeforeOutput);
+      }
+
+      cmd.onDone?.();
+      setCurrentIndex(prev => prev + 1);
+    } catch (error) {
+      console.error('Error processing command:', error);
+      toast.error(error instanceof Error ? error.message : 'Unknown error', { duration: 3000 });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [isProcessing, commandDelay, defaultOutputSpeed, typePrompt, processCommandOutput, sleep]);
+
+  // Main processing loop
+  useEffect(() => {
+    if (!start || currentIndex >= commands.length || isProcessing) return;
+
+    const cmd = commands[currentIndex];
+    if (cmd) {
+      void processCommand(cmd, currentIndex);
+    } else {
+      setCurrentIndex(prev => prev + 1);
+    }
+  }, [start, currentIndex, commands, isProcessing, processCommand]);
+
+  const isXP = theme === "xp";
+  const xpTerminalBg = isXP ? '#000000' : (backgroundColor || '#1C1C1C');
+  const xpPromptClr = isXP ? '#C0C0C0' : (promptColor || '#00ff00');
+  const xpOutputClr = isXP ? '#C0C0C0' : (outputColor || '#EEEEEE');
+  const xpTermFont = isXP 
+    ? "'Courier New', 'Courier', monospace" 
+    : "'DejaVu Sans Mono', 'Ubuntu Mono', 'Consolas', monospace";
+
   const xpTitleBarStyle = {
     background: 'linear-gradient(to bottom, #3D95FF 0%, #245EDC 100%)',
     borderTop: '1px solid #5BA8FF',
@@ -306,17 +314,29 @@ export default function Terminable({
     boxShadow: '0 1px 0 rgba(255,255,255,0.15) inset',
   };
 
-  const xpTerminalBg = isXP ? '#000000' : (backgroundColor || '#1C1C1C');
-  const xpPromptClr = isXP ? '#C0C0C0' : (promptColor || '#00ff00');
-  const xpOutputClr = isXP ? '#C0C0C0' : (outputColor || '#EEEEEE');
-  const xpTermFont = isXP 
-    ? "'Courier New', 'Courier', monospace" 
-    : "'DejaVu Sans Mono', 'Ubuntu Mono', 'Consolas', monospace";
+  if (!mounted) {
+    return (
+      <div className={`mx-auto my-1 ${width} overflow-hidden ${isXP ? 'rounded-sm' : 'rounded-lg'}`}>
+        <div 
+          className="flex items-center justify-between px-3 py-2"
+          style={isXP ? xpTitleBarStyle : ubuntuTitleBarStyle}
+        >
+          <div className="w-20" />
+          <div className="flex-1 text-center text-xs font-semibold px-4 truncate text-white">
+            {title || (isXP ? "Command Prompt" : "Terminal")}
+          </div>
+          <div className="w-20" />
+        </div>
+        <div
+          className={`${height} overflow-y-auto p-4`}
+          style={{ backgroundColor: xpTerminalBg }}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div
-      className={`mx-auto my-1 ${width} overflow-hidden ${isXP ? 'rounded-sm' : 'rounded-lg'} ${isXP ? '' : 'gnome-terminal'}`}
-    >
+    <div className={`mx-auto my-1 ${width} overflow-hidden ${isXP ? 'rounded-sm' : 'rounded-lg'}`}>
       {/* Terminal Title Bar */}
       <div 
         className="flex items-center justify-between px-3 py-2 select-none"
@@ -325,7 +345,6 @@ export default function Terminable({
         {/* Window Controls */}
         <div className="flex items-center gap-1.5">
           {isXP ? (
-            // XP Style Controls
             <>
               <button 
                 type="button"
@@ -338,6 +357,7 @@ export default function Terminable({
                 aria-label="Minimize"
               >
                 <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                  <title>Minimize</title>
                   <rect x="1" y="5" width="6" height="1.5" fill="#0033CC" rx="0.5"/>
                 </svg>
               </button>
@@ -352,6 +372,7 @@ export default function Terminable({
                 aria-label="Maximize"
               >
                 <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                  <title>Maximize</title>
                   <rect x="1.5" y="1.5" width="5" height="5" stroke="#0033CC" strokeWidth="1" rx="0.5"/>
                 </svg>
               </button>
@@ -366,12 +387,12 @@ export default function Terminable({
                 aria-label="Close"
               >
                 <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                  <title>Close</title>
                   <path d="M2 2L6 6M6 2L2 6" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
               </button>
             </>
           ) : (
-            // Ubuntu/Gnome Style Controls
             <>
               <button 
                 type="button"
@@ -384,6 +405,7 @@ export default function Terminable({
                 aria-label="Close"
               >
                 <svg width="6" height="6" viewBox="0 0 8 8" fill="none">
+                  <title>Close</title>
                   <path d="M2 2L6 6M6 2L2 6" stroke="#550000" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
               </button>
@@ -398,6 +420,7 @@ export default function Terminable({
                 aria-label="Minimize"
               >
                 <svg width="6" height="6" viewBox="0 0 8 8" fill="none">
+                  <title>Minimize</title>
                   <rect x="1" y="5" width="6" height="1.5" fill="#554400" rx="0.5"/>
                 </svg>
               </button>
@@ -412,6 +435,7 @@ export default function Terminable({
                 aria-label="Maximize"
               >
                 <svg width="6" height="6" viewBox="0 0 8 8" fill="none">
+                  <title>Maximize</title>
                   <rect x="1.5" y="1.5" width="5" height="5" stroke="#005500" strokeWidth="1.5" rx="0.5"/>
                 </svg>
               </button>
@@ -446,8 +470,8 @@ export default function Terminable({
         role="log"
         aria-live="polite"
       >
-        {display.map((entry, index) => (
-          <div key={`entry-${entry.type}-${index}`} className="my-1">
+        {display.map((entry) => (
+          <div key={entry.id} className="my-1">
             {entry.type === "command" && (
               <div className="flex items-start">
                 <span 
@@ -456,45 +480,48 @@ export default function Terminable({
                 >
                   {isXP ? "C:\\> " : termPrompt}
                 </span>
-                <span
-                  className={`${!entry.done ? "terminal-cursor border-r-2 border-[#4E9A06]" : ""} cursor-pointer break-all rounded px-1 ${isXP ? 'hover:bg-[#001133]' : 'hover:bg-[#333]'}`}
-                  style={{ 
-                    color: xpOutputClr,
-                    fontFamily: xpTermFont,
-                  }}
-                  onClick={() => {
-                    const cmd = commands[processingStateRef.current.currentIndex];
-                    if (allowCopy && entry.done && typeof entry.content === "string" && cmd) {
-                      cmd.onCopy?.();
-                      navigator.clipboard.writeText(entry.content).then(() => {
-                        toast.success("Copied to clipboard", {
-                          duration: 1000,
-                        });
-                      }).catch((error) => {
-                        console.error("Failed to copy to clipboard:", error);
-                        toast.error("Failed to copy to clipboard", {
-                          duration: 1000,
-                        });
-                      });
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (entry.done && (e.key === 'Enter' || e.key === ' ')) {
-                      const cmd = commands[processingStateRef.current.currentIndex];
+                {entry.done ? (
+                  <button
+                    type="button"
+                    className={`cursor-pointer break-all rounded px-1 ${isXP ? 'hover:bg-[#001133]' : 'hover:bg-[#333]'}`}
+                    style={{ 
+                      color: xpOutputClr,
+                      fontFamily: xpTermFont,
+                      background: 'transparent',
+                      border: 'none',
+                      padding: 0,
+                    }}
+                    onClick={() => {
+                      const cmd = commands[currentIndex - 1];
                       if (allowCopy && typeof entry.content === "string" && cmd) {
                         cmd.onCopy?.();
                         navigator.clipboard.writeText(entry.content).then(() => {
                           toast.success("Copied to clipboard", { duration: 1000 });
                         }).catch((error) => {
-                          console.error("Failed to copy to clipboard:", error);
-                          toast.error("Failed to copy to clipboard", { duration: 1000 });
+                          console.error("Failed to copy:", error);
+                          toast.error("Failed to copy", { duration: 1000 });
                         });
                       }
-                    }
-                  }}
-                >
-                  {entry.content}
-                </span>
+                    }}
+                  >
+                    {entry.content}
+                  </button>
+                ) : (
+                  <span className="break-all rounded px-1 flex">
+                    <span
+                      style={{ 
+                        color: xpOutputClr,
+                        fontFamily: xpTermFont,
+                      }}
+                    >
+                      {entry.content}
+                    </span>
+                    <span 
+                      className="terminal-cursor border-r-2 border-[#4E9A06] ml-0"
+                      style={{ height: '1em' }}
+                    />
+                  </span>
+                )}
               </div>
             )}
             {entry.type === "output" && (
@@ -513,4 +540,4 @@ export default function Terminable({
       </div>
     </div>
   );
-} 
+}
