@@ -49,11 +49,11 @@ provider_parse_tool_calls() {
     # No ID provided - generate unique ID for each tool call
     # Arguments is parsed JSON object - convert to JSON string
     echo "$response" | jq -r --arg timestamp "$(date +%s%N)" '
-        [.message.tool_calls[]? | 
+        [.message.tool_calls[]? | to_entries | .[] |
             {
-                id: ("call_" + $timestamp + "_" + (.function.name // "unknown")),
-                name: .function.name,
-                arguments: (.function.arguments | tostring)
+                id: ("call_" + $timestamp + "_" + (.value.function.name // "unknown") + "_" + (.key | tostring)),
+                name: .value.function.name,
+                arguments: (.value.function.arguments | tostring)
             }
         ] // empty'
 }

@@ -778,9 +778,9 @@ make_api_request() {
 	if [[ "$stream" == "true" ]]; then
 		# For streaming, we need to capture and parse
 		local full_response=""
-		"${curl_cmd[@]}" 2>/dev/null | while IFS= read -r line; do
+		while IFS= read -r line; do
 			[[ "${line:0:5}" == "data:" ]] && full_response="$full_response${line#data: }"
-		done
+		done < <("${curl_cmd[@]}" 2>/dev/null)
 		echo "$full_response"
 	else
 		"${curl_cmd[@]}" 2>/dev/null
@@ -800,8 +800,8 @@ process_function_call() {
 	fi
 	
 	# Ensure conversation_file has user message before executing tools
-	if [[ -z "$_arg_conversation" ]] && [[ -f "$conversation_file" ]]; then
-		# If no existing conversation, add user message first
+	if [[ -z "$_arg_conversation" ]]; then
+		# If no existing conversation provided, we need to seed with the user message
 		local user_msg
 		user_msg=$(jq -n -c --arg content "$_arg_prompt" '{role: "user", content: $content}')
 		printf '%s\n' "$user_msg" >> "$conversation_file"
