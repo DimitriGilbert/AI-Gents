@@ -464,6 +464,16 @@ trap on_interrupt INT
 # @parseArger-end
 
 source "$_SCRIPT_DIR/common"
+source "$_SCRIPT_DIR/lib/validation"
+source "$_SCRIPT_DIR/lib/security"
+
+# Initialize security (empty blacklist by default)
+load_command_blacklist
+
+# Validate LLM parameters
+if ! validate_all_llm_params; then
+	die "Parameter validation failed" 1
+fi
 
 # Helper function to parse command with arguments while preserving quotes
 parse_command() {
@@ -602,30 +612,46 @@ if [ "$_arg_provider" != "" ]; then
 	_arg_api="$(get_llm_provider_url "$_arg_provider")/chat/completions"
 fi
 
-#  extract commands between #!/ and ; from user prompt
+# Extract commands between #!/ and ; from user prompt with blacklist filtering
 _arg_prompt_cmds=()
-matches=()
+_prompt_cmd_matches=()
 prompt_copy="$_arg_prompt"
-while [[ "$prompt_copy" =~ \#\!/([^;]+)\; ]]; do
+
+while [[ "$prompt_copy" =~ \#\!\/([^;]+)\; ]]; do
 	pcmd="${BASH_REMATCH[1]}"
-	matches+=("${BASH_REMATCH[0]}")
+	_prompt_cmd_matches+=("${BASH_REMATCH[0]}")
+	
+	# Check blacklist before adding command
+	if ! filter_command "$pcmd"; then
+		log "Skipping blacklisted command: $pcmd" -1
+		prompt_copy="${prompt_copy//"${BASH_REMATCH[0]}"/ [BLOCKED]}"
+		continue
+	fi
+	
 	_arg_prompt_cmds+=("$pcmd")
 	prompt_copy="${prompt_copy//"${BASH_REMATCH[0]}"/ }"
 done
 
+# Execute allowed commands
 if [ "${#_arg_prompt_cmds[@]}" -gt 0 ]; then
-	# for each line, fill an array with each command and its arguments
 	for i in "${!_arg_prompt_cmds[@]}"; do
-		match="${matches[$i]}"
+		match="${_prompt_cmd_matches[$i]}"
+		
 		# Parse the command and its arguments properly
 		read -ra _tmpCmd <<< "$(parse_command "${_arg_prompt_cmds[$i]}")"
-		# execute the command and get its output
-		to_put_in_arg_prompt="$("${_tmpCmd[@]}" 2>&1)"
-
-		if [ $? -ne 0 ]; then
+		
+		# Double-check blacklist (in case of injection)
+		if ! filter_command "${_tmpCmd[0]}"; then
+			log "Command blocked: ${_tmpCmd[0]}" -1
+			_arg_prompt="${_arg_prompt//$match/ [BLOCKED]}"
+			continue
+		fi
+		
+		# Execute the command and get its output
+		if ! to_put_in_arg_prompt="$("${_tmpCmd[@]}" 2>&1)"; then
 			log "\nCommand failed: ${_tmpCmd[*]}\n$to_put_in_arg_prompt\n" -2
 		else
-			# replace the match with the output of the command
+			# Replace the match with the output of the command
 			_arg_prompt="${_arg_prompt//$match/$to_put_in_arg_prompt}"
 		fi
 	done

@@ -1,0 +1,125 @@
+#!/bin/bash
+#
+# Security library for AI-Gents
+# Command blacklist system and credential handling
+# Empty blacklist by default - power++ users control their own security
+#
+
+# Global blacklist array
+COMMAND_BLACKLIST=()
+
+# Load blacklist from user config
+# Usage: load_command_blacklist
+load_command_blacklist() {
+    local blacklist_file="${AI_USER_CONFIG_DIR}/command-blacklist"
+    COMMAND_BLACKLIST=()  # Reset
+    
+    if [[ -f "$blacklist_file" ]]; then
+        while IFS= read -r pattern; do
+            # Skip empty lines and comments
+            [[ -z "$pattern" || "$pattern" =~ ^[[:space:]]*# ]] && continue
+            COMMAND_BLACKLIST+=("$pattern")
+        done < "$blacklist_file"
+    fi
+    
+    # Debug output if verbose
+    if [[ "${_verbose_level:-0}" -ge 2 && ${#COMMAND_BLACKLIST[@]} -gt 0 ]]; then
+        log "Loaded ${#COMMAND_BLACKLIST[@]} blacklist patterns" 2
+    fi
+}
+
+# Check if command matches any blacklist pattern
+# Usage: is_command_blacklisted <command>
+# Returns: 0 if blacklisted, 1 if allowed
+is_command_blacklisted() {
+    local cmd="$1"
+    
+    # If blacklist is empty, allow everything
+    [[ ${#COMMAND_BLACKLIST[@]} -eq 0 ]] && return 1
+    
+    for pattern in "${COMMAND_BLACKLIST[@]}"; do
+        if [[ "$cmd" =~ $pattern ]]; then
+            return 0  # Blacklisted
+        fi
+    done
+    
+    return 1  # Allowed
+}
+
+# Filter command through blacklist
+# Usage: filter_command <command>
+# Returns: 0 if allowed, 1 if blocked
+filter_command() {
+    local cmd="$1"
+    
+    if is_command_blacklisted "$cmd"; then
+        log "Command blocked by blacklist: $cmd" -1
+        return 1
+    fi
+    
+    return 0
+}
+
+# Validate and extract commands from prompt
+# Usage: extract_prompt_commands <prompt>
+# Sets: _arg_prompt_cmds array with extracted commands
+extract_prompt_commands() {
+    local prompt="$1"
+    _arg_prompt_cmds=()
+    _prompt_cmd_matches=()
+    
+    local prompt_copy="$prompt"
+    
+    while [[ "$prompt_copy" =~ \#\!\/([^;]+)\; ]]; do
+        local pcmd="${BASH_REMATCH[1]}"
+        _prompt_cmd_matches+=("${BASH_REMATCH[0]}")
+        
+        if ! filter_command "$pcmd"; then
+            log "Skipping blacklisted command: $pcmd" -1
+            prompt_copy="${prompt_copy//"${BASH_REMATCH[0]}"/ [BLOCKED]}"
+            continue
+        fi
+        
+        _arg_prompt_cmds+=("$pcmd")
+        prompt_copy="${prompt_copy//"${BASH_REMATCH[0]}"/ }"
+    done
+    
+    return 0
+}
+
+# API Key handling (simple, from .env files)
+# Usage: get_provider_credential <provider>
+# Returns: credential via stdout, or fails if not found
+get_provider_credential() {
+    local provider="${1:-${AI_DEFAULT_PROVIDER}}"
+    local cred_file="${AI_USER_CONFIG_DIR}/credentials/${provider}"
+    
+    # Check env variable first (e.g., AI_OPENROUTER_API_KEY)
+    local env_var="AI_${provider^^}_API_KEY"
+    if [[ -n "${!env_var:-}" ]]; then
+        echo "${!env_var}"
+        return 0
+    fi
+    
+    # Fall back to file
+    if [[ -f "$cred_file" ]]; then
+        cat "$cred_file"
+        return 0
+    fi
+    
+    return 1
+}
+
+# Check if a command is safe to execute
+# Usage: is_command_safe <command>
+# Returns: 0 if safe, 1 if unsafe
+is_command_safe() {
+    local cmd="$1"
+    
+    # Check blacklist
+    if is_command_blacklisted "$cmd"; then
+        return 1
+    fi
+    
+    return 0
+}
