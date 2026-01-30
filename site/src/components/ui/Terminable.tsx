@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useTheme } from "next-themes";
 import {
   Menubar,
   MenubarMenu,
@@ -67,9 +68,9 @@ export default function Terminable({
   height = "min-h-[300px] max-h-[500px]",
   termPrompt = "$ ",
   startLine = "",
-  backgroundColor = "bg-[#1a1a1a]",
-  promptColor = "text-[#00ff00]",
-  outputColor = "text-white",
+  backgroundColor,
+  promptColor,
+  outputColor,
   greenMenu,
   yellowMenu,
   redMenu,
@@ -78,6 +79,14 @@ export default function Terminable({
   allowCopy = true,
   start = true,
 }: TerminableProps) {
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  const isXP = theme === "xp";
   const [display, setDisplay] = useState<DisplayEntry[]>([
     { type: "output", content: startLine },
   ]);
@@ -283,49 +292,176 @@ export default function Terminable({
     };
   }, [start, commands, processCommand]);
 
+  // XP Theme styles
+  const xpTitleBarStyle = {
+    background: 'linear-gradient(to bottom, #3D95FF 0%, #245EDC 100%)',
+    borderTop: '1px solid #5BA8FF',
+    borderBottom: '1px solid #1A47B0',
+    boxShadow: '0 1px 0 rgba(255,255,255,0.3) inset',
+  };
+
+  const ubuntuTitleBarStyle = {
+    background: 'linear-gradient(to bottom, #6A5A5A 0%, #5A4A4A 15%, #4A3A3A 50%, #3C2F2F 85%, #2C2424 100%)',
+    borderBottom: '1px solid #1C1C1C',
+    boxShadow: '0 1px 0 rgba(255,255,255,0.15) inset',
+  };
+
+  const xpTerminalBg = isXP ? '#000000' : (backgroundColor || '#1C1C1C');
+  const xpPromptClr = isXP ? '#C0C0C0' : (promptColor || '#00ff00');
+  const xpOutputClr = isXP ? '#C0C0C0' : (outputColor || '#EEEEEE');
+  const xpTermFont = isXP 
+    ? "'Courier New', 'Courier', monospace" 
+    : "'DejaVu Sans Mono', 'Ubuntu Mono', 'Consolas', monospace";
+
   return (
     <div
-      className={`mx-auto my-1 ${width} overflow-hidden rounded-lg ${backgroundColor} font-mono`}
+      className={`mx-auto my-1 ${width} overflow-hidden ${isXP ? 'rounded-sm' : 'rounded-lg'} ${isXP ? '' : 'gnome-terminal'}`}
     >
-      <div className="flex items-center bg-[#333] px-2">
-        <Menubar className="border-none bg-transparent shadow-none">
-          <MenubarMenu>
-            <MenubarTrigger className="p-0 hover:bg-transparent">
-              <div className="h-3 w-3 rounded-full bg-[#27c93f]" />
-            </MenubarTrigger>
-            <MenubarContent>{greenMenu && greenMenu}</MenubarContent>
-          </MenubarMenu>
-          <MenubarMenu>
-            <MenubarTrigger className="p-0 hover:bg-transparent">
-              <div className="h-3 w-3 rounded-full bg-[#ffbd2e]" />
-            </MenubarTrigger>
-            <MenubarContent>{yellowMenu && yellowMenu}</MenubarContent>
-          </MenubarMenu>
-          <MenubarMenu>
-            <MenubarTrigger className="p-0 hover:bg-transparent">
-              <div className="h-3 w-3 rounded-full bg-[#ff5f56]" />
-            </MenubarTrigger>
-            <MenubarContent>{redMenu && redMenu}</MenubarContent>
-          </MenubarMenu>{" "}
-        </Menubar>
-        <div className="flex-1 text-center text-sm">
-          {title}
+      {/* Terminal Title Bar */}
+      <div 
+        className="flex items-center justify-between px-3 py-2 select-none"
+        style={isXP ? xpTitleBarStyle : ubuntuTitleBarStyle}
+      >
+        {/* Window Controls */}
+        <div className="flex items-center gap-1.5">
+          {isXP ? (
+            // XP Style Controls
+            <>
+              <button 
+                type="button"
+                className="flex items-center justify-center w-5 h-5 transition-transform hover:scale-105"
+                style={{
+                  background: 'linear-gradient(to bottom, #FFFFFF 0%, #E0E0E0 50%, #D0D0D0 51%, #B0B0B0 100%)',
+                  border: '1px solid #0033CC',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                }}
+                aria-label="Minimize"
+              >
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                  <rect x="1" y="5" width="6" height="1.5" fill="#0033CC" rx="0.5"/>
+                </svg>
+              </button>
+              <button 
+                type="button"
+                className="flex items-center justify-center w-5 h-5 transition-transform hover:scale-105"
+                style={{
+                  background: 'linear-gradient(to bottom, #FFFFFF 0%, #E0E0E0 50%, #D0D0D0 51%, #B0B0B0 100%)',
+                  border: '1px solid #0033CC',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                }}
+                aria-label="Maximize"
+              >
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                  <rect x="1.5" y="1.5" width="5" height="5" stroke="#0033CC" strokeWidth="1" rx="0.5"/>
+                </svg>
+              </button>
+              <button 
+                type="button"
+                className="flex items-center justify-center w-5 h-5 transition-transform hover:scale-105"
+                style={{
+                  background: 'linear-gradient(to bottom, #FF9999 0%, #FF7777 50%, #FF5555 51%, #FF3333 100%)',
+                  border: '1px solid #990000',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                }}
+                aria-label="Close"
+              >
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                  <path d="M2 2L6 6M6 2L2 6" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </>
+          ) : (
+            // Ubuntu/Gnome Style Controls
+            <>
+              <button 
+                type="button"
+                className="flex items-center justify-center w-4 h-4 rounded-full transition-transform hover:scale-110"
+                style={{
+                  background: 'linear-gradient(to bottom, #FF9999 0%, #FF7777 50%, #EE5555 51%, #DD4444 100%)',
+                  border: '1px solid #BB2222',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                }}
+                aria-label="Close"
+              >
+                <svg width="6" height="6" viewBox="0 0 8 8" fill="none">
+                  <path d="M2 2L6 6M6 2L2 6" stroke="#550000" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </button>
+              <button 
+                type="button"
+                className="flex items-center justify-center w-4 h-4 rounded-full transition-transform hover:scale-110"
+                style={{
+                  background: 'linear-gradient(to bottom, #FFEE88 0%, #FFDD55 50%, #EECC44 51%, #DDBB33 100%)',
+                  border: '1px solid #BB9922',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                }}
+                aria-label="Minimize"
+              >
+                <svg width="6" height="6" viewBox="0 0 8 8" fill="none">
+                  <rect x="1" y="5" width="6" height="1.5" fill="#554400" rx="0.5"/>
+                </svg>
+              </button>
+              <button 
+                type="button"
+                className="flex items-center justify-center w-4 h-4 rounded-full transition-transform hover:scale-110"
+                style={{
+                  background: 'linear-gradient(to bottom, #88EE88 0%, #66DD66 50%, #55CC55 51%, #44BB44 100%)',
+                  border: '1px solid #229922',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                }}
+                aria-label="Maximize"
+              >
+                <svg width="6" height="6" viewBox="0 0 8 8" fill="none">
+                  <rect x="1.5" y="1.5" width="5" height="5" stroke="#005500" strokeWidth="1.5" rx="0.5"/>
+                </svg>
+              </button>
+            </>
+          )}
         </div>
+
+        {/* Window Title */}
+        <div 
+          className="flex-1 text-center text-xs font-semibold px-4 truncate"
+          style={{
+            color: isXP ? '#FFFFFF' : '#E8E0D5',
+            textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+          }}
+        >
+          {title || (isXP ? "Command Prompt" : "Terminal")}
+        </div>
+
+        {/* Spacer */}
+        <div className="w-12" />
       </div>
+
+      {/* Terminal Content */}
       <div
         ref={terminalRef}
         onScroll={handleScroll}
-        className={`${height} overflow-y-auto p-5 ${promptColor} whitespace-pre-wrap break-words`}
+        className={`${height} overflow-y-auto p-4 whitespace-pre-wrap break-words`}
+        style={{
+          backgroundColor: xpTerminalBg,
+          fontFamily: xpTermFont,
+        }}
         role="log"
         aria-live="polite"
       >
         {display.map((entry, index) => (
-          <div key={`${index}-${entry.type}`} className="my-1">
+          <div key={`entry-${entry.type}-${index}`} className="my-1">
             {entry.type === "command" && (
-              <div className="flex">
-                <span className={`mr-2 ${promptColor}`}>{termPrompt}</span>
+              <div className="flex items-start">
+                <span 
+                  className="mr-2 shrink-0 terminal-text"
+                  style={{ color: xpPromptClr }}
+                >
+                  {isXP ? "C:\\> " : termPrompt}
+                </span>
                 <span
-                  className={`${!entry.done ? "animate-blink border-r-2 border-[#00ff00]" : ""} cursor-pointer break-all rounded px-1 hover:bg-[#333]`}
+                  className={`${!entry.done ? "terminal-cursor border-r-2 border-[#4E9A06]" : ""} cursor-pointer break-all rounded px-1 ${isXP ? 'hover:bg-[#001133]' : 'hover:bg-[#333]'}`}
+                  style={{ 
+                    color: xpOutputClr,
+                    fontFamily: xpTermFont,
+                  }}
                   onClick={() => {
                     const cmd = commands[processingStateRef.current.currentIndex];
                     if (allowCopy && entry.done && typeof entry.content === "string" && cmd) {
@@ -342,6 +478,20 @@ export default function Terminable({
                       });
                     }
                   }}
+                  onKeyDown={(e) => {
+                    if (entry.done && (e.key === 'Enter' || e.key === ' ')) {
+                      const cmd = commands[processingStateRef.current.currentIndex];
+                      if (allowCopy && typeof entry.content === "string" && cmd) {
+                        cmd.onCopy?.();
+                        navigator.clipboard.writeText(entry.content).then(() => {
+                          toast.success("Copied to clipboard", { duration: 1000 });
+                        }).catch((error) => {
+                          console.error("Failed to copy to clipboard:", error);
+                          toast.error("Failed to copy to clipboard", { duration: 1000 });
+                        });
+                      }
+                    }
+                  }}
                 >
                   {entry.content}
                 </span>
@@ -349,8 +499,11 @@ export default function Terminable({
             )}
             {entry.type === "output" && (
               <div
-                key={`${index}__`}
-                className={`ml-6 whitespace-pre-wrap break-all ${outputColor}`}
+                className="ml-4 whitespace-pre-wrap break-all"
+                style={{ 
+                  color: xpOutputClr,
+                  fontFamily: xpTermFont,
+                }}
               >
                 {entry.content}
               </div>

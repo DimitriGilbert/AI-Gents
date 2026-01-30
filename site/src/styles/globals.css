@@ -30,10 +30,26 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
   
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-ubuntu), 'DejaVu Sans', 'Bitstream Vera Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'DejaVu Sans Mono', 'Ubuntu Mono', 'Consolas', ui-monospace, monospace;
   
+  /* Ubuntu 10.04 Color Palette */
+  --color-ubuntu-brown: #3C2F2F;
+  --color-ubuntu-orange: #DD4814;
+  --color-ubuntu-cream: #F5F1E8;
+  --color-ubuntu-beige: #E8E0D5;
+  --color-ubuntu-dark: #2C2424;
+  --color-ubuntu-warm: #772953;
+  --color-terminal-black: #1C1C1C;
+  --color-terminal-green: #4E9A06;
+  --color-terminal-green-bright: #8AE234;
+  
+  /* Animations */
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-scale-in: scale-in 0.3s ease-out;
+  --animate-wobble: wobble 0.5s ease-in-out;
   
   @keyframes accordion-down {
     from { height: 0; }
@@ -44,61 +60,79 @@
     from { height: var(--radix-accordion-content-height); }
     to { height: 0; }
   }
+  
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  
+  @keyframes wobble {
+    0%, 100% { transform: rotateY(0deg); }
+    25% { transform: rotateY(-2deg); }
+    75% { transform: rotateY(2deg); }
+  }
 }
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
-  --primary: 240 5.9% 10%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 240 5.9% 10%;
-  --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
-  --accent: 240 4.8% 95.9%;
-  --accent-foreground: 240 5.9% 10%;
+  /* Ubuntu 10.04 Inspired Theme - Light Mode */
+  --background: 40 33% 94%;
+  --foreground: 15 15% 22%;
+  --card: 40 25% 91%;
+  --card-foreground: 15 15% 22%;
+  --popover: 40 25% 91%;
+  --popover-foreground: 15 15% 22%;
+  --primary: 17 85% 47%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 30 20% 85%;
+  --secondary-foreground: 15 15% 22%;
+  --muted: 30 15% 80%;
+  --muted-foreground: 15 10% 40%;
+  --accent: 330 50% 30%;
+  --accent-foreground: 0 0% 100%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
-  --border: 240 5.9% 90%;
-  --input: 240 5.9% 90%;
-  --ring: 240 10% 3.9%;
-  --chart-1: 12 76% 61%;
-  --chart-2: 173 58% 39%;
-  --chart-3: 197 37% 24%;
-  --chart-4: 43 74% 66%;
-  --chart-5: 27 87% 67%;
-  --radius: 0.5rem;
+  --border: 30 20% 75%;
+  --input: 30 20% 85%;
+  --ring: 17 85% 47%;
+  --chart-1: 17 85% 47%;
+  --chart-2: 330 50% 30%;
+  --chart-3: 150 60% 35%;
+  --chart-4: 43 74% 50%;
+  --chart-5: 220 70% 50%;
+  --radius: 0.375rem;
 }
 
 .dark {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  --card: 240 10% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --popover: 240 10% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 0 0% 98%;
-  --primary-foreground: 240 5.9% 10%;
-  --secondary: 240 3.7% 15.9%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
-  --accent: 240 3.7% 15.9%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
+  /* Ubuntu 10.04 Dark - Dark Mode */
+  --background: 15 20% 15%;
+  --foreground: 40 20% 90%;
+  --card: 15 15% 20%;
+  --card-foreground: 40 20% 90%;
+  --popover: 15 15% 20%;
+  --popover-foreground: 40 20% 90%;
+  --primary: 17 85% 47%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 15 10% 25%;
+  --secondary-foreground: 40 20% 90%;
+  --muted: 15 10% 30%;
+  --muted-foreground: 40 15% 60%;
+  --accent: 330 50% 40%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 62.8% 50%;
   --destructive-foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
-  --ring: 240 4.9% 83.9%;
-  --chart-1: 220 70% 50%;
-  --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 340 75% 55%;
+  --border: 15 10% 30%;
+  --input: 15 10% 25%;
+  --ring: 17 85% 47%;
+  --chart-1: 17 85% 47%;
+  --chart-2: 330 50% 40%;
+  --chart-3: 150 60% 45%;
+  --chart-4: 43 74% 60%;
+  --chart-5: 220 70% 60%;
 }
 
 @layer base {
@@ -107,9 +141,407 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
   }
 }
 
-.mc {
-  background-image: url("data:image/svg+xml,%3Csvg width='100' height='20' viewBox='0 0 100 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M21.184 20c.357-.13.72-.264 1.088-.402l1.768-.661C33.64 15.347 39.647 14 50 14c10.271 0 15.362 1.222 24.629 4.928.955.383 1.869.74 2.75 1.072h6.225c-2.51-.73-5.139-1.691-8.233-2.928C65.888 13.278 60.562 12 50 12c-10.626 0-16.855 1.397-26.66 5.063l-1.767.662c-2.475.923-4.66 1.674-6.724 2.275h6.335zm0-20C13.258 2.892 8.077 4 0 4V2c5.744 0 9.951-.574 14.85-2h6.334zM77.38 0C85.239 2.966 90.502 4 100 4V2c-6.842 0-11.386-.542-16.396-2h-6.225zM0 14c8.44 0 13.718-1.21 22.272-4.402l1.768-.661C33.64 5.347 39.647 4 50 4c10.271 0 15.362 1.222 24.629 4.928C84.112 12.722 89.438 14 100 14v-2c-10.271 0-15.362-1.222-24.629-4.928C65.888 3.278 60.562 2 50 2 39.374 2 33.145 3.397 23.34 7.063l-1.767.662C13.223 10.84 8.163 12 0 12v2z' fill='%23004225' fill-opacity='0.2' fill-rule='evenodd'/%3E%3C/svg%3E");
+/* Ubuntu 10.04 Wallpaper */
+.ubuntu-wallpaper,
+html.ubuntu body {
+  background: radial-gradient(ellipse at center, #772953 0%, #3C2F2F 50%, #2C1F24 100%);
+  background-attachment: fixed;
+}
+
+.ubuntu-wallpaper-clean {
+  background: #F5F1E8;
+}
+
+/* Windows XP Wallpaper */
+html.xp body {
+  background: linear-gradient(to bottom, #64B5F6 0%, #42A5F5 60%, #4CAF50 60%, #388E3C 100%);
+  background-attachment: fixed;
+}
+
+/* 3D Skeuomorphic Effects */
+.glassy-panel {
+  background: linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 50%, rgba(0,0,0,0.05) 51%, rgba(0,0,0,0.1) 100%);
+  border: 1px solid rgba(255,255,255,0.3);
+  box-shadow: 
+    0 1px 0 rgba(255,255,255,0.3) inset,
+    0 -1px 0 rgba(0,0,0,0.2) inset,
+    0 2px 4px rgba(0,0,0,0.2);
+}
+
+.raised-panel {
+  background: linear-gradient(to bottom, #F5F1E8 0%, #E8E0D5 100%);
+  border: 1px solid #D0C8B8;
+  border-top-color: #F5F1E8;
+  border-left-color: #EDE5DA;
+  box-shadow: 
+    0 1px 0 rgba(255,255,255,0.8) inset,
+    0 -1px 0 rgba(0,0,0,0.1) inset,
+    0 2px 4px rgba(0,0,0,0.15);
+}
+
+.window-chrome {
+  background: linear-gradient(to bottom, #5A4A4A 0%, #3C2F2F 50%, #2C2424 100%);
+  border: 1px solid #4A3A3A;
+  border-top-color: #6A5A5A;
+  box-shadow: 
+    0 1px 0 rgba(255,255,255,0.2) inset,
+    0 4px 12px rgba(0,0,0,0.4);
+}
+
+.window-content {
+  background: linear-gradient(to bottom, #F5F1E8 0%, #EDE5DA 100%);
+  border: 2px solid #3C2F2F;
+  border-top: none;
+  box-shadow: 
+    0 1px 0 rgba(255,255,255,0.5) inset,
+    0 8px 24px rgba(0,0,0,0.3);
+}
+
+/* 3D Button Effect */
+.btn-3d {
+  background: linear-gradient(to bottom, #f5f5f5 0%, #e0e0e0 50%, #d0d0d0 51%, #c0c0c0 100%);
+  border: 1px solid #999;
+  border-top-color: #fff;
+  border-left-color: #ddd;
+  border-radius: 4px;
+  box-shadow: 
+    0 1px 0 rgba(255,255,255,0.8) inset,
+    0 1px 3px rgba(0,0,0,0.2),
+    0 2px 2px rgba(0,0,0,0.1);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+  transition: all 0.1s ease;
+}
+
+.btn-3d:hover {
+  background: linear-gradient(to bottom, #ffffff 0%, #f0f0f0 50%, #e0e0e0 51%, #d0d0d0 100%);
+  transform: translateY(-1px);
+  box-shadow: 
+    0 1px 0 rgba(255,255,255,0.8) inset,
+    0 2px 4px rgba(0,0,0,0.2),
+    0 3px 3px rgba(0,0,0,0.15);
+}
+
+.btn-3d:active {
+  background: linear-gradient(to bottom, #d0d0d0 0%, #c0c0c0 50%, #b0b0b0 51%, #a0a0a0 100%);
+  transform: translateY(1px);
+  box-shadow: 
+    0 1px 0 rgba(0,0,0,0.2) inset,
+    0 1px 2px rgba(0,0,0,0.2);
+}
+
+.btn-3d-ubuntu {
+  background: linear-gradient(to bottom, #f5c6a5 0%, #e89b6a 50%, #dd7a4a 51%, #d06030 100%);
+  border: 1px solid #a05030;
+  border-top-color: #ffd4b8;
+  color: #3C2F2F;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+}
+
+.btn-3d-ubuntu:hover {
+  background: linear-gradient(to bottom, #ffd4b8 0%, #f5b088 50%, #e89b6a 51%, #dd7a4a 100%);
+}
+
+.btn-3d-ubuntu:active {
+  background: linear-gradient(to bottom, #d06030 0%, #c05028 50%, #b04020 51%, #a03018 100%);
+}
+
+/* Retro Button CSS States */
+.retro-btn {
+  position: relative;
+  transition: all 0.1s ease;
+}
+
+.retro-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 2px 4px rgba(0,0,0,0.25), 0 3px 3px rgba(0,0,0,0.15) !important;
+}
+
+.retro-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.1) inset, 0 1px 2px rgba(0,0,0,0.2) !important;
+}
+
+/* ============================================
+   WINDOWS XP LUNA THEME
+   ============================================ */
+
+/* Windows XP Color Palette */
+:root {
+  --xp-blue: #245EDC;
+  --xp-blue-light: #3D95FF;
+  --xp-blue-dark: #1A47B0;
+  --xp-green: #36A856;
+  --xp-green-light: #5BC77D;
+  --xp-green-dark: #2A8A42;
+  --xp-orange: #E67D00;
+  --xp-orange-light: #FFA94D;
+  --xp-silver: #ECE9D8;
+  --xp-silver-light: #F5F4F0;
+  --xp-silver-dark: #D4D0C0;
+}
+
+/* Windows XP Wallpaper - Bliss */
+.xp-wallpaper {
+  background: 
+    linear-gradient(135deg, #6B9EFF 0%, #3D95FF 50%, #245EDC 100%);
+  background-attachment: fixed;
+}
+
+.xp-wallpaper-bliss {
+  background: linear-gradient(to bottom, #64B5F6 0%, #42A5F5 60%, #4CAF50 60%, #388E3C 100%);
+  background-attachment: fixed;
+}
+
+/* XP Window Chrome */
+.xp-window-chrome {
+  background: linear-gradient(to bottom, #3D95FF 0%, #245EDC 100%);
+  border: 1px solid #1A47B0;
+  box-shadow: 
+    0 1px 0 rgba(255,255,255,0.3) inset,
+    0 4px 12px rgba(0,0,0,0.4);
+}
+
+.xp-window-content {
+  background: linear-gradient(to bottom, #F5F4F0 0%, #ECE9D8 100%);
+  border: 2px solid #245EDC;
+  border-top: none;
+}
+
+/* XP Taskbar Style Navigation */
+.xp-taskbar {
+  background: linear-gradient(to bottom, #3D95FF 0%, #245EDC 100%);
+  border-top: 1px solid #5BA8FF;
+  box-shadow: 0 -1px 3px rgba(0,0,0,0.3);
+}
+
+/* XP 3D Button */
+.xp-btn {
+  background: linear-gradient(to bottom, #F5F4F0 0%, #ECE9D8 50%, #D4D0C0 51%, #C0B8A0 100%);
+  border: 1px solid #A09080;
+  border-top-color: #FFFFFF;
+  border-left-color: #F0EED8;
+  border-radius: 3px;
+  box-shadow: 
+    0 1px 0 rgba(255,255,255,0.8) inset,
+    0 1px 3px rgba(0,0,0,0.2);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+}
+
+.xp-btn:hover {
+  background: linear-gradient(to bottom, #FFFFFF 0%, #F5F4F0 50%, #ECE9D8 51%, #D4D0C0 100%);
+  box-shadow: 
+    0 1px 0 rgba(255,255,255,0.8) inset,
+    0 2px 4px rgba(0,0,0,0.2);
+}
+
+.xp-btn:active {
+  background: linear-gradient(to bottom, #D4D0C0 0%, #C0B8A0 50%, #A09080 51%, #908070 100%);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.1) inset;
+}
+
+.xp-btn-primary {
+  background: linear-gradient(to bottom, #5BC77D 0%, #36A856 50%, #2A8A42 51%, #1E6E32 100%);
+  border-color: #1A5A28;
+  border-top-color: #7AD89A;
+  color: white;
+  text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
+}
+
+.xp-btn-primary:hover {
+  background: linear-gradient(to bottom, #7AD89A 0%, #5BC77D 50%, #36A856 51%, #2A8A42 100%);
+}
+
+.xp-btn-primary:active {
+  background: linear-gradient(to bottom, #2A8A42 0%, #1E6E32 50%, #1A5A28 51%, #124620 100%);
+}
+
+/* XP Panel */
+.xp-panel {
+  background: linear-gradient(to bottom, #F5F4F0 0%, #ECE9D8 100%);
+  border: 1px solid #D4D0C0;
+  border-top-color: #FFFFFF;
+  border-left-color: #F5F4F0;
+  border-radius: 4px;
+  box-shadow: 
+    0 1px 0 rgba(255,255,255,0.8) inset,
+    0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* XP Command Prompt */
+.xp-terminal {
+  background: #000000;
+  border: 2px solid #C0B8A0;
+  border-radius: 0;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.4);
+}
+
+.xp-terminal-header {
+  background: linear-gradient(to bottom, #3D95FF 0%, #245EDC 100%);
+  border-bottom: 1px solid #1A47B0;
+}
+
+.xp-terminal-text {
+  color: #C0C0C0;
+  font-family: 'Courier New', 'Consolas', monospace;
+}
+
+/* XP Scrollbar */
+.xp-scrollbar::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+.xp-scrollbar::-webkit-scrollbar-track {
+  background: #F5F4F0;
+  border: 1px solid #D4D0C0;
+}
+
+.xp-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #F5F4F0 0%, #ECE9D8 50%, #D4D0C0 100%);
+  border: 1px solid #A09080;
+  border-radius: 2px;
+}
+
+.xp-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #FFFFFF 0%, #F5F4F0 50%, #ECE9D8 100%);
+}
+
+/* XP Menu */
+.xp-menu-item {
+  color: #000000;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+}
+
+.xp-menu-item:hover {
+  background: linear-gradient(to bottom, #3D95FF 0%, #245EDC 100%);
+  border-color: #1A47B0;
+  color: white;
+}
+
+/* Menu Bar Styling */
+.menu-bar {
+  background: linear-gradient(to bottom, #F5F1E8 0%, #E8E0D5 50%, #DDD5CA 51%, #D0C8B8 100%);
+  border-bottom: 1px solid #B8B0A0;
+  box-shadow: 
+    0 1px 0 rgba(255,255,255,0.8) inset,
+    0 2px 4px rgba(0,0,0,0.1);
+}
+
+.menu-item {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+}
+
+.menu-item:hover {
+  background: linear-gradient(to bottom, rgba(221, 72, 20, 0.15) 0%, rgba(221, 72, 20, 0.25) 100%);
+  border-color: rgba(221, 72, 20, 0.3);
+}
+
+/* Gnome Terminal Styling */
+.gnome-terminal {
+  background: #1C1C1C;
+  border: 2px solid #3C2F2F;
+  border-radius: 6px;
+  box-shadow: 
+    0 4px 12px rgba(0,0,0,0.4),
+    0 1px 0 rgba(255,255,255,0.1) inset;
+}
+
+.gnome-terminal-header {
+  background: linear-gradient(to bottom, #5A4A4A 0%, #3C2F2F 100%);
+  border-bottom: 1px solid #2C2424;
+  border-radius: 4px 4px 0 0;
+}
+
+.terminal-text {
+  color: #4E9A06;
+  font-family: 'DejaVu Sans Mono', 'Ubuntu Mono', monospace;
+  text-shadow: 0 0 2px rgba(78, 154, 6, 0.3);
+}
+
+/* Compiz-style Animations */
+.compiz-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.compiz-scale-in {
+  animation: scale-in 0.3s ease-out;
+}
+
+.compiz-wobble:hover {
+  animation: wobble 0.5s ease-in-out;
+}
+
+/* Inset Text Effect */
+.text-embossed {
+  color: #3C2F2F;
+  text-shadow: 
+    0 1px 0 rgba(255,255,255,0.8),
+    0 -1px 0 rgba(0,0,0,0.1);
+}
+
+.text-engraved {
+  color: #6A5A5A;
+  text-shadow: 
+    0 -1px 0 rgba(255,255,255,0.5),
+    0 1px 0 rgba(0,0,0,0.2);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: linear-gradient(to bottom, #E8E0D5 0%, #DDD5CA 100%);
+  border-radius: 6px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #D0C8B8 0%, #C0B8A8 50%, #B0A898 51%, #A09888 100%);
+  border-radius: 6px;
+  border: 1px solid #A09080;
+  box-shadow: 
+    0 1px 0 rgba(255,255,255,0.3) inset,
+    0 1px 2px rgba(0,0,0,0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #E0D8C8 0%, #D0C8B8 50%, #C0B8A8 51%, #B0A898 100%);
+}
+
+/* Terminal Scrollbar (dark) */
+.gnome-terminal ::-webkit-scrollbar-track {
+  background: #1C1C1C;
+  border-radius: 3px;
+}
+
+.gnome-terminal ::-webkit-scrollbar-thumb {
+  background: #3C2F2F;
+  border-radius: 3px;
+  border: 1px solid #4C3F3F;
+}
+
+.gnome-terminal ::-webkit-scrollbar-thumb:hover {
+  background: #5C4F4F;
+}
+
+/* Cursor blink for terminal */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.terminal-cursor {
+  animation: blink 1s step-end infinite;
 }
