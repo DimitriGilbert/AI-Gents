@@ -377,13 +377,18 @@ trap cleanup EXIT
 ### Connection Pooling
 
 - Cookie jar for HTTP keep-alive
-- 120s keepalive time
+- Configurable keepalive time (default: 120s, defined in `API_KEEPALIVE_TIME`)
+  - Balance between reuse and freshness
+  - Too low: frequent reconnections
+  - Too high: stale connections
 - HTTP/1.1 for compatibility
 - Connection reuse across requests
 
 ### Streaming Optimization
 
-- 16ms batching (60fps target)
+- Configurable batching interval (default: 16ms for 60fps, defined in `STREAM_BATCH_INTERVAL_NS`)
+  - Lower values = smoother but more CPU
+  - Higher values = less CPU but choppier
 - Buffer accumulation
 - jq-based parsing (not awk)
 - Minimal terminal updates
@@ -391,8 +396,8 @@ trap cleanup EXIT
 ### Lazy Loading
 
 - TTL-based caching
-- Agent configs cached 5 minutes
-- Provider configs persist
+- Agent configs cached 5 minutes (300s)
+- Provider configs persist until manually cleared
 - Automatic expiration cleanup
 
 ### Parallel Processing
@@ -401,6 +406,31 @@ trap cleanup EXIT
 - Configurable max jobs (default 4)
 - Atomic slot acquisition
 - Background job management
+
+### API Configuration Constants
+
+Located in `src/bash/lib/api`:
+
+```bash
+# Connection keep-alive time (seconds)
+# Balance between reuse and connection freshness
+readonly API_KEEPALIVE_TIME=120
+
+# Default request timeout (seconds)
+# Long enough for large LLM responses
+readonly API_DEFAULT_TIMEOUT=300
+
+# Maximum retry attempts
+# Exponential backoff: 1s, 2s, 4s
+readonly API_MAX_RETRIES=3
+readonly API_RETRY_DELAY=1
+
+# Streaming batch interval (nanoseconds)
+# 16ms = ~60fps output
+readonly STREAM_BATCH_INTERVAL_NS=16000000
+```
+
+To modify these values, edit the constants in `src/bash/lib/api` directly.
 
 ## Security Model
 
@@ -423,6 +453,48 @@ trap cleanup EXIT
 ### Blacklist Configuration
 
 Users create `~/.config/ai-gents/command-blacklist`:
+
+```bash
+# Dangerous patterns
+rm[[:space:]]+-rf[[:space:]]+/
+mkfs\.
+dd[[:space:]]+if=.*of=/dev
+```
+
+### Safe Mode
+
+The `--safe-mode` flag (available on `ask` and `chat` commands) disables ALL command execution:
+
+```bash
+# Block all #!/command; execution
+ai ask "Analyze this: #!/ls -la;" --safe-mode
+# Output: [SAFE-MODE:BLOCKED]
+
+# Use in chat for extra safety
+ai chat --safe-mode
+```
+
+Useful when:
+- Working with untrusted AI outputs
+- Copy-pasting prompts from external sources
+- Running in automated/CI environments
+- First-time users who want to disable commands entirely
+
+### First-Time Warning
+
+When a user first executes a prompt containing `#!/command;`, a security warning is displayed:
+
+```
+⚠️  SECURITY WARNING: Command Execution Detected
+
+This prompt contains executable bash commands (#!/command; syntax).
+These commands will be executed on your system BEFORE being sent to the AI.
+...
+Press Enter to acknowledge and continue (this warning will not show again)
+Or press Ctrl+C to cancel
+```
+
+The warning is stored in `~/.config/ai-gents/.command-warning-acknowledged` and won't show again once acknowledged.
 
 ```bash
 # Dangerous patterns

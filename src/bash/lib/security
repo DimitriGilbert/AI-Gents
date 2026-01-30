@@ -123,3 +123,44 @@ is_command_safe() {
     
     return 0
 }
+
+# Show first-time command execution warning
+# Usage: show_command_safety_warning
+show_command_safety_warning() {
+    local warning_file="${AI_USER_CONFIG_DIR}/.command-warning-acknowledged"
+    
+    # Only show warning once
+    if [[ -f "$warning_file" ]]; then
+        return 0
+    fi
+    
+    # Check if there are commands in the prompt
+    if [[ ! "$*" == *"#!/"*" ;"* ]]; then
+        return 0
+    fi
+    
+    cat << 'EOF'
+
+⚠️  SECURITY WARNING: Command Execution Detected
+
+This prompt contains executable bash commands (#!/command; syntax).
+These commands will be executed on your system BEFORE being sent to the AI.
+
+Safety measures:
+1. Use --safe-mode to disable command execution entirely
+2. Configure ~/.config/ai-gents/command-blacklist to block dangerous commands
+3. Review ALL commands before execution - AI suggestions can be destructive
+
+Examples of dangerous commands:
+   #!/rm -rf /;        ← Permanently deletes your entire system
+   #!/mkfs.ext4 /dev/sda1;  ← Formats your hard drive
+   #!/dd if=/dev/zero of=/dev/sda;  ← Overwrites all data
+
+Press Enter to acknowledge and continue (this warning will not show again)
+Or press Ctrl+C to cancel
+
+EOF
+    
+    read -r
+    touch "$warning_file"
+}

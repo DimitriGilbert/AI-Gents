@@ -33,6 +33,7 @@ fi
 # @parseArger opt structured_outputs "structured_outputs param for http request"
 # @parseArger opt log "log file"
 # @parseArger flag stream "stream to stdout"
+# @parseArger flag safe-mode "Disable command execution (!#command;) for safety"
 # @parseArger-declarations-end
 
 # @parseArger-utils
@@ -88,6 +89,7 @@ _arg_structured_outputs=
 _arg_log=
 # FLAGS
 _arg_stream="off"
+_arg_safe_mode="off"
 # NESTED
 _verbose_level="0"
 
@@ -120,6 +122,7 @@ print_help() {
 		echo -e "	--structured_outputs <structured_outputs>: structured_outputs param for http request"
 		echo -e "	--log <log>: log file"
 		echo -e "	--stream|--no-stream: stream to stdout"
+		echo -e "	--safe-mode|--no-safe-mode: Disable command execution (!#command;) for safety, off by default (use --safe-mode to turn it on)"
 		echo -e "Usage :
 	$0 <prompt> [--api <value>] [--api-key <value>] [--model <value>] [--system <value>] [--conversation <value>] [--provider <value>] [--tools <value>] [--tool_choice <value>] [--max_tokens <value>] [--temperature <value>] [--top_p <value>] [--stop <value>] [--frequency_penalty <value>] [--presence_penalty <value>] [--seed <value>] [--logit_bias <value>] [--logprobs <value>] [--top_logprobs <value>] [--response_format <value>] [--structured_outputs <value>] [--log <value>] [--[no-]stream]"
 	fi
@@ -361,6 +364,12 @@ parse_commandline() {
 		--no-stream)
 			_arg_stream="off"
 			;;
+		--safe-mode)
+			_arg_safe_mode="on"
+			;;
+		--no-safe-mode)
+			_arg_safe_mode="off"
+			;;
 		-h | --help)
 			print_help
 			exit 0
@@ -447,6 +456,7 @@ print_debug() {
 	echo -e "	structured_outputs: ${_arg_structured_outputs}"
 	echo -e "	log: ${_arg_log}"
 	echo -e "	stream: ${_arg_stream}"
+	echo -e "	safe-mode: ${_arg_safe_mode}"
 
 }
 
@@ -612,12 +622,29 @@ if [ "$_arg_provider" != "" ]; then
 	_arg_api="$(get_llm_provider_url "$_arg_provider")/chat/completions"
 fi
 
+# Check for safe mode - if enabled, skip all command execution
+if [ "$_arg_safe_mode" == "on" ]; then
+	# Check if prompt contains command syntax
+	if [[ "$_arg_prompt" == *"#!/"*" ;"* ]]; then
+		log "Safe mode enabled: skipping command execution (use --no-safe-mode to allow commands)" -1
+	fi
+else
+	# First-time command execution warning
+	show_command_safety_warning
+fi
+
 # Extract commands between #!/ and ; from user prompt with blacklist filtering
 _arg_prompt_cmds=()
 _prompt_cmd_matches=()
 prompt_copy="$_arg_prompt"
 
 while [[ "$prompt_copy" =~ \#\!\/([^;]+)\; ]]; do
+	# Skip command processing if safe mode is on
+	if [ "$_arg_safe_mode" == "on" ]; then
+		pcmd="${BASH_REMATCH[1]}"
+		prompt_copy="${prompt_copy//"${BASH_REMATCH[0]}"/ [SAFE-MODE:BLOCKED]}"
+		continue
+	fi
 	pcmd="${BASH_REMATCH[1]}"
 	_prompt_cmd_matches+=("${BASH_REMATCH[0]}")
 	

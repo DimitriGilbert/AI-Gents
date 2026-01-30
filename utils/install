@@ -319,6 +319,13 @@ if [ ! -d "$AI_USER_CONFIG_DIR/credentials" ]; then
 	mkdir -p "$AI_USER_CONFIG_DIR/credentials"
 fi
 
+# Copy blacklist template if not exists
+if [ ! -f "$AI_USER_CONFIG_DIR/command-blacklist" ] && [ -f "$_dir/src/bash/lib/blacklist.template" ]; then
+	cp "$_dir/src/bash/lib/blacklist.template" "$AI_USER_CONFIG_DIR/command-blacklist"
+	log "Blacklist template installed at $AI_USER_CONFIG_DIR/command-blacklist" 1
+	log "Edit this file to enable command blocking (all patterns are commented out by default)" 1
+fi
+
 if [ "${#_arg_credential[@]}" -gt 0 ]; then
 	for credential in "${_arg_credential[@]}"; do
 		provider=$(echo "$credential" | cut -d ':' -f 1)

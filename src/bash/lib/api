@@ -5,6 +5,35 @@
 # Uses curl's cookie jar for HTTP keep-alive
 #
 
+# =============================================================================
+# CONFIGURATION CONSTANTS
+# =============================================================================
+
+# Connection keep-alive time in seconds
+# Balance between connection reuse and freshness:
+# - Too low (< 60s): Frequent reconnections, higher latency
+# - Too high (> 180s): Stale connections may cause errors
+# - 120s is chosen based on typical API server timeouts
+readonly API_KEEPALIVE_TIME=120
+
+# Default request timeout in seconds
+# Should be long enough for large LLM responses
+# but short enough to fail fast on network issues
+readonly API_DEFAULT_TIMEOUT=300
+
+# Maximum number of retry attempts for failed requests
+# Exponential backoff: 1s, 2s, 4s between retries
+readonly API_MAX_RETRIES=3
+
+# Initial retry delay in seconds
+readonly API_RETRY_DELAY=1
+
+# Streaming batch interval in nanoseconds for 60fps target
+# 16ms = 16000000ns = ~60fps
+# Lower values = smoother but more CPU usage
+# Higher values = less CPU but more choppy output
+readonly STREAM_BATCH_INTERVAL_NS=16000000
+
 # Connection pool directory
 _API_CONN_POOL_DIR="${TMPDIR:-/tmp}/ai-gents-conn"
 
@@ -39,6 +68,7 @@ api_curl_cmd() {
     local cookie_jar="$_API_CONN_POOL_DIR/${conn_id}.jar"
     
     # Enhanced connection pooling for HTTP keep-alive
+    # shellcheck disable=SC2034  # curl_args is used via nameref
     curl_args=(
         -s  # silent
         -X POST
@@ -46,9 +76,9 @@ api_curl_cmd() {
         -H "Connection: keep-alive"
         --cookie-jar "$cookie_jar"
         --cookie "$cookie_jar"
-        --keepalive-time 120
-        --max-time 300
-        --retry 0  # We handle retries manually
+        --keepalive-time "$API_KEEPALIVE_TIME"
+        --max-time "$API_DEFAULT_TIMEOUT"
+        --retry 0  # We handle retries manually for better control
         --http1.1  # Force HTTP/1.1 for better keep-alive compatibility
     )
 }
@@ -60,9 +90,9 @@ api_request() {
     local endpoint="$1"
     local payload_file="$2"
     local api_key="$3"
-    local timeout="${4:-300}"
-    local max_retries=3
-    local retry_delay=1
+    local timeout="${4:-$API_DEFAULT_TIMEOUT}"
+    local max_retries="$API_MAX_RETRIES"
+    local retry_delay="$API_RETRY_DELAY"
     
     # Build base curl command
     local curl_base=()
@@ -104,7 +134,16 @@ api_request() {
         
         # Log failure if verbose
         if [[ "${_verbose_level:-0}" -ge 1 ]]; then
-            log "API request failed (attempt $attempt/$max_retries): HTTP $http_code, exit $exit_code" -1
+            log "API request failed:" -2
+            log "  Endpoint: $endpoint" -2
+            log "  HTTP Code: $http_code" -2
+            log "  Exit Code: $exit_code" -2
+            log "  Attempt: $attempt/$max_retries" -2
+            if [[ ${#response} -lt 500 ]]; then
+                log "  Response: ${response}" -2
+            else
+                log "  Response (first 500 chars): ${response:0:500}..." -2
+            fi
         fi
         
         # Don't retry on certain errors
@@ -179,8 +218,8 @@ api_pool_stats() {
 # Streaming Optimizer - 16ms batching for 60fps target
 # ============================================================================
 
-# Target frame time for 60fps: ~16ms
-_STREAM_BATCH_INTERVAL=16000000  # 16ms in nanoseconds
+# Use configured batch interval
+_STREAM_BATCH_INTERVAL=$STREAM_BATCH_INTERVAL_NS
 
 # Buffer for batched content
 _stream_buffer=""

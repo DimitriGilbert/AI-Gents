@@ -1,0 +1,161 @@
+# AI-Gents Command Blacklist Template
+# 
+# This file contains bash extended regular expression patterns for blocking
+# dangerous commands when using the #!/command; syntax in prompts.
+#
+# IMPORTANT:
+# - By default, NO commands are blocked (empty blacklist = everything allowed)
+# - This is a POWER++ user tool - you control your own security
+# - Uncomment the patterns below to enable protections, or add your own
+# - Patterns are matched anywhere in the command (partial match)
+#
+# Format:
+# - One pattern per line
+# - Empty lines and lines starting with # are ignored
+# - Uses bash extended regular expressions (regex)
+#
+# Testing patterns:
+# You can test if a pattern matches using: [[ "your command" =~ pattern ]]
+# Example: [[ "rm -rf /home" =~ rm.*-rf.*/ ]] && echo "MATCH"
+
+# =============================================================================
+# DANGEROUS FILE OPERATIONS (Uncomment to enable)
+# =============================================================================
+
+# Delete entire filesystem (the classic "rm -rf /")
+# rm[[:space:]]+-rf[[:space:]]+/
+
+# Delete entire filesystem with variations
+# rm[[:space:]]+-rf[[:space:]]+/.*
+
+# Force remove without confirmation
+# rm[[:space:]]+-f[[:space:]]+/
+
+# =============================================================================
+# FILESYSTEM OPERATIONS (Uncomment to enable)
+# =============================================================================
+
+# Format filesystem (mkfs.* commands)
+# mkfs\.
+# mkfs\.ext[0-9]+
+# mkfs\.xfs
+# mkfs\.btrfs
+# mkfs\.vfat
+
+# =============================================================================
+# DISK OPERATIONS (Uncomment to enable)
+# =============================================================================
+
+# Direct disk writes with dd
+# dd[[:space:]]+if=.*of=/dev
+# dd[[:space:]]+if=.*of=/dev/sd
+# dd[[:space:]]+if=.*of=/dev/hd
+# dd[[:space:]]+if=.*of=/dev/nvme
+# dd[[:space:]]+if=.*of=/dev/mmc
+
+# Direct disk writes with redirection
+# .*[[:space:]]>[[:space:]]+/dev/sd[a-z].*
+# .*[[:space:]]>[[:space:]]+/dev/hd[a-z].*
+# .*[[:space:]]>[[:space:]]+/dev/nvme[0-9].*
+
+# =============================================================================
+# SYSTEM MODIFICATIONS (Uncomment to enable)
+# =============================================================================
+
+# Writing to /etc (system config)
+# echo[[:space:]]+.*[[:space:]]+>[[:space:]]+/etc/
+# .*[[:space:]]>[[:space:]]+/etc/.*
+
+# Changing permissions on system files
+# chmod[[:space:]]+.*[[:space:]]+/etc/
+# chmod[[:space:]]+.*[[:space:]]+/bin/
+# chmod[[:space:]]+.*[[:space:]]+/sbin/
+# chmod[[:space:]]+.*[[:space:]]+/usr/bin/
+# chmod[[:space:]]+.*[[:space:]]+/usr/sbin/
+
+# Changing ownership on system files
+# chown[[:space:]]+.*[[:space:]]+/etc/
+# chown[[:space:]]+.*[[:space:]]+/bin/
+# chown[[:space:]]+.*[[:space:]]+/sbin/
+
+# =============================================================================
+# PRIVILEGE ESCALATION (Uncomment to enable)
+# =============================================================================
+
+# Running dangerous commands with sudo
+# sudo[[:space:]]+rm
+# sudo[[:space:]]+dd
+# sudo[[:space:]]+mkfs
+# sudo[[:space:]]+fdisk
+
+# Switching to root user
+# su[[:space:]]+-[[:space:]]*$\n# su[[:space:]]+-l[[:space:]]*$\n# su[[:space:]]+-[[:space:]]+root
+
+# =============================================================================
+# NETWORK OPERATIONS (Uncomment to enable)
+# =============================================================================
+
+# Downloading to system directories
+# curl.*[>|].*/etc/
+# wget.*[>|].*/etc/
+# curl.*[>|].*/bin/
+# wget.*[>|].*/bin/
+
+# =============================================================================
+# CUSTOM PATTERNS (Add your own below)
+# =============================================================================
+
+# Example: Block any command containing "production-database"
+# .*production-database.*
+
+# Example: Block specific scripts
+# .*dangerous-script\.sh.*
+
+# Example: Block specific paths
+# .*\/path\/to\/sensitive\/.*
+
+# =============================================================================
+# ADVANCED PATTERN EXAMPLES
+# =============================================================================
+
+# Match "rm" followed by "-rf" anywhere after
+# rm.*-rf.*
+
+# Match commands starting with specific words
+# ^(rm|dd|mkfs|fdisk)
+
+# Match commands containing "delete" or "remove"
+# .*delete.*|.*remove.*
+
+# Match any command with /dev/sd followed by letter
+# .*\/dev\/sd[a-z].*
+
+# =============================================================================
+# NOTES
+# =============================================================================
+#
+# 1. Patterns are CASE-SENSITIVE by default
+#    To make case-insensitive, use: (?i)pattern (if supported by your bash)
+#
+# 2. Whitespace matching:
+#    - [[:space:]] matches any whitespace (space, tab, etc.)
+#    - [[:space:]]+ matches one or more whitespace characters
+#
+# 3. Special characters that need escaping:
+#    . ^ $ * + ? { } [ ] \ | ( )
+#    Example: To match a literal dot, use \.
+#
+# 4. Testing your patterns:
+#    test_cmd="rm -rf /"
+#    pattern="rm[[:space:]]+-rf[[:space:]]+/"
+#    if [[ "$test_cmd" =~ $pattern ]]; then
+#        echo "Pattern MATCHES - command would be blocked"
+#    else
+#        echo "Pattern does NOT match - command would be allowed"
+#    fi
+#
+# 5. Regular expression resources:
+#    - https://www.gnu.org/software/bash/manual/html_node/Pattern-Matching.html
+#    - https://regex101.com (select "PCRE2" for closest bash regex behavior)
+#
+# =============================================================================
