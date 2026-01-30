@@ -250,27 +250,44 @@ trap on_interrupt INT;
 # print_debug "$@"
 # @parseArger-end
 
+source "$_SCRIPT_DIR/../lib/errors"
+
 config_dir="$HOME/.config/ai-gents/agents"
 config_file="$config_dir/${_arg_name}.yml"
 
-# Copy base template
-yq ".name = \"${_arg_name}\"" "$_SCRIPT_DIR/../../../agent.yml" > "$config_file"
+# Validate agent name is safe for filenames
+if [[ "$_arg_name" =~ [\/\\:\*\?\"\<\>\|] ]]; then
+    die "Invalid agent name: contains unsafe characters" $E_VALIDATION_ERROR
+fi
 
-# Update optional fields if provided
+# Validate prompt is safe for YAML (basic check)
+if [[ -n "$_arg_prompt" ]] && [[ "$_arg_prompt" =~ $'\n' ]]; then
+    die "Invalid prompt: newlines not allowed in system prompt" $E_VALIDATION_ERROR
+fi
+
+# Copy base template using yq with --arg for safety
+yq --arg name "$_arg_name" ".name = \$name" "$SCRIPT_DIR/../../../agent.yml" > "$config_file"
+
+# Update optional fields if provided using yq --arg (no string interpolation)
 if [ -n "$_arg_prompt" ]; then
-    yq -i ".system.prompt = \"${_arg_prompt}\"" "$config_file"
+    yq -i --arg prompt "$_arg_prompt" ".system.prompt = \$prompt" "$config_file"
 fi
 
 if [ -n "$_arg_provider" ]; then
-    yq -i ".model.provider = \"${_arg_provider}\"" "$config_file"
+    yq -i --arg provider "$_arg_provider" ".model.provider = \$provider" "$config_file"
 fi
 
 if [ -n "$_arg_model" ]; then
-    yq -i ".model.name = \"${_arg_model}\"" "$config_file"
+    yq -i --arg model "$_arg_model" ".model.name = \$model" "$config_file"
 fi
 
 if [ -n "$_arg_temperature" ]; then
-    yq -i ".model.temperature = ${_arg_temperature}" "$config_file"
+    # Validate temperature is numeric before passing
+    if [[ "$_arg_temperature" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+        yq -i --arg temp "$_arg_temperature" ".model.temperature = \$temp" "$config_file"
+    else
+        warn "Invalid temperature value, skipping"
+    fi
 fi
 
 log "Agent '${_arg_name}' created at ${config_file}" 1

@@ -1,0 +1,189 @@
+# AI-Gents Variable Naming Standards
+
+This document defines the naming conventions for the AI-Gents codebase to ensure consistency and maintainability.
+
+## General Principles
+
+1. **Be descriptive** - Variable names should clearly indicate their purpose
+2. **Be consistent** - Follow these standards across all files
+3. **Be predictable** - Other developers should be able to guess your variable name
+
+## Naming Conventions
+
+### 1. Argument Variables (ParseArger-generated)
+
+**Pattern:** `_arg_<name>`
+
+Used for CLI arguments parsed by parseArger.
+
+```bash
+_arg_prompt=""
+_arg_api=""
+_arg_model=""
+_arg_stream="off"
+```
+
+### 2. Positional Arguments
+
+**Pattern:** `_arg_<positional_name>` or `_positionals` array
+
+```bash
+_arg_name=""
+_positionals=()
+```
+
+### 3. Local Variables (Function-scoped)
+
+**Pattern:** `lowercase_with_underscores`
+
+```bash
+local config_dir="$HOME/.config"
+local result_file=""
+local attempt_count=0
+```
+
+### 4. Constants (Global, Read-only)
+
+**Pattern:** `UPPERCASE_WITH_UNDERSCORES`
+
+```bash
+readonly MAX_RETRIES=3
+readonly DEFAULT_TIMEOUT=30
+readonly E_SUCCESS=0
+readonly E_ERROR=1
+```
+
+### 5. Private/Internal Variables
+
+**Pattern:** `_<lowercase>` or `__<lowercase>`
+
+Used for internal state or temporary variables that shouldn't be accessed directly.
+
+```bash
+_cache=()           # Internal cache
+_verbose_level="0"  # Internal state
+_last_flush_time=0  # Internal timestamp
+```
+
+### 6. Global Arrays
+
+**Pattern:** `UPPERCASE` or `_<lowercase>` depending on scope
+
+```bash
+# Global constants arrays
+COMMAND_BLACKLIST=()
+AVAILABLE_PROVIDERS=()
+
+# Internal arrays
+_CACHE=()
+_CACHE_TIME=()
+```
+
+### 7. Function Parameters
+
+**Pattern:** Follow the same rules based on usage
+
+```bash
+# Local parameters
+my_function() {
+    local input_file="$1"
+    local output_file="$2"
+    local max_lines="${3:-100}"  # With default
+}
+```
+
+## Special Cases
+
+### Exit Codes (Error Handling)
+
+All exit codes should use the constants from `src/bash/lib/errors`:
+
+```bash
+E_SUCCESS=0
+E_GENERIC=1
+E_INVALID_ARGS=2
+E_MISSING_DEPENDENCY=3
+E_CONFIG_ERROR=4
+E_NETWORK_ERROR=5
+E_API_ERROR=6
+E_VALIDATION_ERROR=7
+E_SECURITY_ERROR=8
+E_FILE_ERROR=9
+E_INTERRUPTED=130
+```
+
+### Script Directory Variables
+
+Standard variables set at script start:
+
+```bash
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+AI_USER_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ai-gents"
+```
+
+### Temporary File Variables
+
+**Pattern:** `tmp_<description>` or follow existing naming
+
+```bash
+tmp_payload="$(mktemp)"
+tmp_response="$(mktemp)"
+```
+
+## File Naming
+
+- **No `.sh` extensions** - All bash scripts should be executable without extension
+- **Lowercase with underscores** for multi-word names (except providers)
+- **Provider files** use provider name directly (e.g., `openai`, `openrouter`)
+
+## Examples
+
+### Good Examples
+
+```bash
+# Arguments
+_arg_temperature="0.7"
+_arg_max_tokens=4096
+
+# Locals
+local provider_url=""
+local retry_count=0
+local is_streaming=false
+
+# Constants
+readonly API_TIMEOUT=30
+readonly DEFAULT_MODEL="gpt-4o-mini"
+
+# Private
+_cache=()
+_last_request_time=0
+```
+
+### Bad Examples (Don't Do This)
+
+```bash
+# Mixed case for locals
+tempFile=""        # BAD: use temp_file
+MAXTOKENS=100      # BAD: use MAX_TOKENS
+argPrompt=""       # BAD: use _arg_prompt
+myvariable=""      # BAD: use my_variable or local my_variable
+```
+
+## Migration Notes
+
+When refactoring existing code:
+
+1. Update variable names in the file you're modifying
+2. Keep backward compatibility by aliasing old names temporarily:
+   ```bash
+   # During migration
+   local new_name="${oldName:-}"
+   ```
+3. Update tests to use new variable names
+4. Remove aliases after all files are migrated
+
+## Enforcement
+
+- Use `shellcheck` to catch naming inconsistencies
+- Review variable names in PRs
+- Update this document if new patterns emerge

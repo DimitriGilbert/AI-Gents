@@ -1,0 +1,166 @@
+#!/bin/bash
+#
+# Error handling library for AI-Gents
+# Standardized exit codes and error messages
+#
+
+# Standardized Exit Codes
+E_SUCCESS=0
+E_GENERIC=1
+E_INVALID_ARGS=2
+E_MISSING_DEPENDENCY=3
+E_CONFIG_ERROR=4
+E_NETWORK_ERROR=5
+E_API_ERROR=6
+E_VALIDATION_ERROR=7
+E_SECURITY_ERROR=8
+E_FILE_ERROR=9
+E_INTERRUPTED=130
+
+# Exit code descriptions
+# Usage: error_get_description <exit_code>
+error_get_description() {
+    local code="$1"
+    case "$code" in
+        $E_SUCCESS) echo "Success" ;;
+        $E_GENERIC) echo "Generic error" ;;
+        $E_INVALID_ARGS) echo "Invalid arguments" ;;
+        $E_MISSING_DEPENDENCY) echo "Missing dependency" ;;
+        $E_CONFIG_ERROR) echo "Configuration error" ;;
+        $E_NETWORK_ERROR) echo "Network error" ;;
+        $E_API_ERROR) echo "API error" ;;
+        $E_VALIDATION_ERROR) echo "Validation error" ;;
+        $E_SECURITY_ERROR) echo "Security error" ;;
+        $E_FILE_ERROR) echo "File error" ;;
+        $E_INTERRUPTED) echo "Interrupted" ;;
+        *) echo "Unknown error code: $code" ;;
+    esac
+}
+
+# Enhanced die function with standardized exit codes
+# Usage: die <message> [exit_code] [show_help]
+die() {
+    local message="$1"
+    local exit_code="${2:-$E_GENERIC}"
+    local show_help="${3:-no}"
+    
+    # Validate exit code is numeric
+    if ! [[ "$exit_code" =~ ^[0-9]+$ ]]; then
+        exit_code=$E_GENERIC
+    fi
+    
+    # Show help if requested
+    if [[ "$show_help" == "yes" ]] && [[ "${_PRINT_HELP:-no}" == "yes" ]]; then
+        print_help >&2 2>/dev/null || true
+    fi
+    
+    # Log the error with appropriate level
+    if [[ "$exit_code" -ge 100 ]]; then
+        # Signals/interrupts
+        log "$message" -3 >&2
+    elif [[ "$exit_code" -ge 5 ]]; then
+        # Serious errors
+        log "$message" -2 >&2
+    else
+        # Standard errors
+        log "$message" -1 >&2
+    fi
+    
+    exit "$exit_code"
+}
+
+# Try-catch wrapper for error handling
+# Usage: try <command> [catch_callback]
+# catch_callback receives exit code and stderr
+try() {
+    local cmd="$1"
+    local catch_fn="${2:-}"
+    local exit_code=0
+    local stderr
+    
+    # Capture both stdout and stderr
+    stderr=$(eval "$cmd" 2>&1) && exit_code=$? || exit_code=$?
+    
+    if [[ $exit_code -ne 0 ]]; then
+        if [[ -n "$catch_fn" ]]; then
+            $catch_fn "$exit_code" "$stderr"
+        fi
+        return $exit_code
+    fi
+    
+    # Output captured stdout
+    echo "$stderr"
+    return 0
+}
+
+# Validate command exists
+# Usage: require_cmd <command> [exit_on_missing]
+require_cmd() {
+    local cmd="$1"
+    local exit_on_missing="${2:-yes}"
+    
+    if ! command -v "$cmd" &>/dev/null; then
+        if [[ "$exit_on_missing" == "yes" ]]; then
+            die "Required command not found: $cmd" $E_MISSING_DEPENDENCY
+        fi
+        return 1
+    fi
+    return 0
+}
+
+# Check multiple dependencies at once
+# Usage: require_cmds <cmd1> <cmd2> ...
+require_cmds() {
+    local missing=()
+    
+    for cmd in "$@"; do
+        if ! command -v "$cmd" &>/dev/null; then
+            missing+=("$cmd")
+        fi
+    done
+    
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        die "Missing required commands: ${missing[*]}" $E_MISSING_DEPENDENCY
+    fi
+}
+
+# Assert condition is true
+# Usage: assert <condition> [message] [exit_code]
+assert() {
+    local condition="$1"
+    local message="${2:-Assertion failed}"
+    local exit_code="${3:-$E_GENERIC}"
+    
+    if ! eval "$condition"; then
+        die "$message" "$exit_code"
+    fi
+}
+
+# Handle error with fallback
+# Usage: with_fallback <primary_cmd> <fallback_cmd>
+with_fallback() {
+    local primary="$1"
+    local fallback="$2"
+    
+    if ! eval "$primary" 2>/dev/null; then
+        eval "$fallback"
+    fi
+}
+
+# Log error and continue (non-fatal)
+# Usage: warn <message> [exit_code_for_reference]
+warn() {
+    local message="$1"
+    local ref_code="${2:-}"
+    
+    if [[ -n "$ref_code" ]]; then
+        log "[WARN:$ref_code] $message" -1
+    else
+        log "[WARN] $message" -1
+    fi
+}
+
+# Exit gracefully on interrupt
+setup_interrupt_handler() {
+    trap 'die "Process interrupted" $E_INTERRUPTED' INT TERM
+}
