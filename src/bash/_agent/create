@@ -266,7 +266,7 @@ if [[ -n "$_arg_prompt" ]] && [[ "$_arg_prompt" =~ $'\n' ]]; then
 fi
 
 # Copy base template using yq with --arg for safety
-yq --arg name "$_arg_name" ".name = \$name" "$SCRIPT_DIR/../../../agent.yml" > "$config_file"
+yq --arg name "$_arg_name" ".name = \$name" "$_SCRIPT_DIR/../../../agent.yml" > "$config_file"
 
 # Update optional fields if provided using yq --arg (no string interpolation)
 if [ -n "$_arg_prompt" ]; then
