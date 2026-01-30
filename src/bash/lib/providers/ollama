@@ -14,3 +14,61 @@ PROVIDER_API_KEY_ENV="AI_OLLAMA_API_KEY"
 provider_get_url() {
     echo "http://${AI_OLLAMA_HOST:-localhost}:${AI_OLLAMA_PORT:-11434}/v1"
 }
+
+# =============================================================================
+# TOOL CALLING SUPPORT
+# =============================================================================
+
+# Check if provider supports tool calling
+# Usage: provider_supports_tools
+# Returns: 0 if supported, 1 otherwise
+provider_supports_tools() {
+    # Ollama supports tool calling with recent models (qwen3, llama3.2, etc.)
+    return 0
+}
+
+# Format tools parameter for provider API request
+# Converts standardized tools format to provider-specific format
+# Usage: provider_format_tools <tools_json>
+# Input: [{"type": "function", "function": {"name": "...", "description": "...", "parameters": {...}}}]
+# Returns: Provider-specific tools JSON
+provider_format_tools() {
+    local tools_json="$1"
+    # Ollama uses OpenAI-compatible format - pass through as-is
+    echo "$tools_json"
+}
+
+# Parse tool calls from provider response (standardized output)
+# Usage: provider_parse_tool_calls <response_json>
+# Returns: JSON array: [{"id": "...", "name": "...", "arguments": "..."}]
+# Note: arguments is always a JSON string
+provider_parse_tool_calls() {
+    local response="$1"
+    
+    # Ollama format: .message.tool_calls[] with {function: {name: ..., arguments: {...}}}
+    # No ID provided - generate unique ID for each tool call
+    # Arguments is parsed JSON object - convert to JSON string
+    echo "$response" | jq -r --arg timestamp "$(date +%s%N)" '
+        [.message.tool_calls[]? | 
+            {
+                id: ("call_" + $timestamp + "_" + (.function.name // "unknown")),
+                name: .function.name,
+                arguments: (.function.arguments | tostring)
+            }
+        ] // empty'
+}
+
+# Format tool result message for provider conversation history
+# Usage: provider_format_tool_result <tool_call_id> <tool_name> <result_content>
+# Returns: Provider-specific message JSON
+provider_format_tool_result() {
+    local tool_call_id="$1"
+    local tool_name="$2"
+    local result="$3"
+    
+    # Ollama uses tool_name (not tool_call_id) for tool results
+    jq -n \
+        --arg name "$tool_name" \
+        --arg content "$result" \
+        '{role: "tool", tool_name: $name, content: $content}'
+}

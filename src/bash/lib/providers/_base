@@ -158,8 +158,52 @@ provider_format_multimodal_content() {
 
 # Get supported content types for this provider
 # Usage: provider_get_supported_content_types
-# Returns: Space-separated list of supported types (e.g., "image document audio")
+# Returns: Space-separated list of supported types (e.g. "image document audio")
 provider_get_supported_content_types() {
     # Default: no multimodal support
     echo ""
+}
+
+# =============================================================================
+# TOOL CALLING INTERFACE (NEW)
+# =============================================================================
+
+# Check if provider supports tool calling
+# Usage: provider_supports_tools
+# Returns: 0 if supported, 1 otherwise
+provider_supports_tools() {
+    # Default: no tool support
+    return 1
+}
+
+# Format tools parameter for provider API request
+# Converts standardized tools format to provider-specific format
+# Usage: provider_format_tools <tools_json>
+# Input: [{"type": "function", "function": {"name": "...", "description": "...", "parameters": {...}}}]
+# Returns: Provider-specific tools JSON
+provider_format_tools() {
+    local tools_json="$1"
+    # Default: OpenAI format (pass through)
+    echo "$tools_json"
+}
+
+# Parse tool calls from provider response (standardized output)
+# Usage: provider_parse_tool_calls <response_json>
+# Returns: JSON array: [{"id": "...", "name": "...", "arguments": "..."}]
+# Note: arguments is always a JSON string
+provider_parse_tool_calls() {
+    local response="$1"
+    # Default: Try to parse OpenAI format
+    echo "$response" | jq -r '[.choices[0].message.tool_calls[]? | {id: .id, name: .function.name, arguments: .function.arguments}] // empty'
+}
+
+# Format tool result message for provider conversation history
+# Usage: provider_format_tool_result <tool_call_id> <tool_name> <result_content>
+# Returns: Provider-specific message JSON
+provider_format_tool_result() {
+    local tool_call_id="$1"
+    local tool_name="$2"
+    local result="$3"
+    # Default: OpenAI format
+    jq -n --arg id "$tool_call_id" --arg content "$result" '{role: "tool", tool_call_id: $id, content: $content}'
 }

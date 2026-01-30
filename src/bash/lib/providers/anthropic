@@ -115,3 +115,46 @@ provider_get_supported_content_types() {
     # Anthropic supports images (png, jpeg, webp, gif) and PDFs (as images)
     echo "image document"
 }
+
+# =============================================================================
+# TOOL CALLING INTERFACE
+# =============================================================================
+
+# Override: Anthropic Claude supports tool calling
+provider_supports_tools() {
+    return 0
+}
+
+# Override: Format tools for Anthropic API
+# Converts standard format to Anthropic format:
+# Input:  [{"type": "function", "function": {"name": "...", "description": "...", "parameters": {...}}}]
+# Output: [{"name": "...", "description": "...", "input_schema": {...}}]
+provider_format_tools() {
+    local tools_json="$1"
+    # Remove type:function wrapper, rename parameters to input_schema
+    echo "$tools_json" | jq '[.[] | .function | {name: .name, description: .description, input_schema: .parameters}]'
+}
+
+# Override: Parse tool calls from Anthropic response
+# Source: .content[] blocks with type: "tool_use"
+# Output: [{"id": "...", "name": "...", "arguments": "..."}]
+# Note: arguments is JSON string (Anthropic has "input" as parsed object)
+provider_parse_tool_calls() {
+    local response="$1"
+    # Extract tool_use blocks from content array, convert input object to JSON string
+    echo "$response" | jq '[.content[]? | select(.type == "tool_use") | {id: .id, name: .name, arguments: (.input | tojson)}] // empty'
+}
+
+# Override: Format tool result for Anthropic conversation history
+# Anthropic uses role: "user" with content blocks, not role: "tool"
+# Output: {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "...", "content": "..."}]}
+provider_format_tool_result() {
+    local tool_call_id="$1"
+    local tool_name="$2"
+    local result="$3"
+    # Anthropic uses role: "user" with tool_result content block
+    jq -n \
+        --arg id "$tool_call_id" \
+        --arg content "$result" \
+        '{role: "user", content: [{type: "tool_result", tool_use_id: $id, content: $content}]}'
+}

@@ -117,38 +117,6 @@ provider_parse_stream_chunk() {
     printf '%b' "$content"
 }
 
-# Override: Parse function/tool calls from response
-provider_parse_function_call() {
-    local response="$1"
-    
-    # Check for tool_calls (new format) or function_call (old format)
-    local tool_calls
-    tool_calls=$(echo "$response" | jq -r '.choices[0].message.tool_calls // empty')
-    
-    if [[ -n "$tool_calls" ]]; then
-        echo "$tool_calls"
-        return 0
-    fi
-    
-    # Legacy function_call format
-    echo "$response" | jq -r '.choices[0].message.function_call // empty'
-}
-
-# Override: Check if response has tool/function call
-provider_has_function_call() {
-    local response="$1"
-    
-    if echo "$response" | jq -e '.choices[0].message.tool_calls' >/dev/null 2>&1; then
-        return 0
-    fi
-    
-    if echo "$response" | jq -e '.choices[0].message.function_call' >/dev/null 2>&1; then
-        return 0
-    fi
-    
-    return 1
-}
-
 # Override: OpenAI supports multimodal content (GPT-4o, GPT-4 Vision, etc.)
 provider_supports_multimodal() {
     return 0
@@ -167,4 +135,53 @@ provider_format_multimodal_content() {
 provider_get_supported_content_types() {
     # OpenAI supports images (png, jpeg, webp, gif) and documents
     echo "image document"
+}
+
+# =============================================================================
+# TOOL CALLING INTERFACE
+# =============================================================================
+
+# Override: Check if provider supports tool calling
+provider_supports_tools() {
+    # OpenAI fully supports function/tool calling
+    return 0
+}
+
+# Override: Format tools for OpenAI API request
+# OpenAI uses standard format, so just pass through
+provider_format_tools() {
+    local tools_json="$1"
+    echo "$tools_json"
+}
+
+# Override: Parse tool calls from OpenAI response
+# Input: OpenAI response JSON
+# Output: Standardized format [{"id": "...", "name": "...", "arguments": "..."}]
+provider_parse_tool_calls() {
+    local response="$1"
+
+    # Parse .choices[0].message.tool_calls[] to standardized format
+    # Arguments are already JSON strings in OpenAI format
+    echo "$response" | jq -r '[
+        .choices[0].message.tool_calls[]? |
+        {
+            id: .id,
+            name: .function.name,
+            arguments: .function.arguments
+        }
+    ] // empty'
+}
+
+# Override: Format tool result for OpenAI conversation history
+provider_format_tool_result() {
+    local tool_call_id="$1"
+    local tool_name="$2"
+    local result="$3"
+
+    # OpenAI format: {"role": "tool", "tool_call_id": "...", "content": "..."}
+    # tool_name is not used in OpenAI format (ID is used for matching)
+    jq -n \
+        --arg id "$tool_call_id" \
+        --arg content "$result" \
+        '{role: "tool", tool_call_id: $id, content: $content}'
 }

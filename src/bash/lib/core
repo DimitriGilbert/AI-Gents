@@ -177,3 +177,41 @@ die() {
     log "$1" -3 >&2
     exit "${_ret}"
 }
+
+# =============================================================================
+# DEFAULT SYSTEM PROMPT
+# =============================================================================
+
+# Build default system prompt with program info and capabilities
+# This is ALWAYS prepended to any user-provided system prompt
+# Usage: build_default_system_prompt
+build_default_system_prompt() {
+    local date_str
+    date_str=$(date +"%Y-%m-%d %H:%M:%S")
+    
+    cat <<EOF
+You are AI-Gents, a bash-based AI CLI interface.
+Date: $date_str
+
+CAPABILITIES:
+- Execute bash commands using the 'bash' tool
+- Use other available tools to help complete tasks
+- When you need to run a command, call the bash tool with the command string
+
+You have access to a bash tool that can execute any shell command.
+EOF
+}
+
+# Build full system prompt by combining default + user prompt
+# Usage: build_full_system_prompt [user_system_prompt]
+build_full_system_prompt() {
+    local user_system="${1:-}"
+    local default_prompt
+    default_prompt=$(build_default_system_prompt)
+    
+    if [[ -n "$user_system" ]]; then
+        echo -e "${default_prompt}\n\nUSER INSTRUCTIONS:\n${user_system}"
+    else
+        echo "$default_prompt"
+    fi
+}

@@ -24,26 +24,26 @@ provider_get_url() {
 provider_parse_stream_chunk() {
     local chunk="$1"
     local content
-    
+
     # Check for error first
     if echo "$chunk" | jq -e '.error' >/dev/null 2>&1; then
         return 1
     fi
-    
+
     # Extract content
     content=$(echo "$chunk" | jq -r '.choices[0].delta.content // ""')
-    
+
     # Handle special characters and formatting
     content="${content//\\\"/\"}"
     content="${content//\\n/$'\n'}"
     content="${content//\\t/$'\t'}"
-    
+
     # Handle think tags (various formats from different providers)
     content="${content//<thinking>/\\e[38;5;4m}"
     content="${content//<\\/thinking>/\\e[0m}"
     content="${content//◁think▷/\\e[38;5;4m}"
     content="${content//◁\\/think▷/\\e[0m}"
-    
+
     printf '%b' "$content"
 }
 
@@ -53,10 +53,10 @@ provider_build_payload() {
     local messages_json="$2"
     local stream="$3"
     shift 3
-    
+
     # Ensure model is lowercase (OpenRouter convention)
     model="${model,,}"
-    
+
     # Start with base payload
     local payload
     payload=$(jq -n \
@@ -64,13 +64,13 @@ provider_build_payload() {
         --argjson messages "$messages_json" \
         --argjson stream "$stream" \
         '{model: $model, messages: $messages, stream: $stream}')
-    
+
     # Add extra parameters
     for param in "$@"; do
         if [[ "$param" =~ ^([^=]+)=(.*)$ ]]; then
             local key="${BASH_REMATCH[1]}"
             local value="${BASH_REMATCH[2]}"
-            
+
             # Handle special OpenRouter parameters
             case "$key" in
                 transforms|plugins|route)
@@ -94,7 +94,7 @@ provider_build_payload() {
             esac
         fi
     done
-    
+
     echo "$payload"
 }
 
@@ -102,16 +102,16 @@ provider_build_payload() {
 provider_get_headers() {
     local api_key="$1"
     local -n headers="$2"
-    
+
     headers=(-H "Content-Type: application/json")
-    
+
     if [[ -n "$api_key" ]]; then
         headers+=(-H "Authorization: Bearer ${api_key}")
     fi
-    
+
     # Add HTTP-Referer header (OpenRouter tracks usage by referer)
-    headers+=(-H "HTTP-Referer: https://github.com/anomalyco/ai-gents")
-    
+    headers+=(-H "HTTP-Referer: https://github.com/DimitriGilbert/ai-gents")
+
     # Add X-Title header (application name)
     headers+=(-H "X-Title: AI-Gents")
 }
@@ -133,4 +133,38 @@ provider_format_multimodal_content() {
 provider_get_supported_content_types() {
     # OpenRouter supports images, documents, audio, and video
     echo "image document audio video"
+}
+
+# =============================================================================
+# TOOL CALLING SUPPORT
+# =============================================================================
+
+# Override: OpenRouter supports tool calling (passes through to underlying provider)
+provider_supports_tools() {
+    return 0
+}
+
+# Override: Format tools for OpenRouter (OpenAI-compatible)
+# OpenRouter accepts standard OpenAI format
+provider_format_tools() {
+    local tools_json="$1"
+    # Pass through - OpenRouter handles normalization
+    echo "$tools_json"
+}
+
+# Override: Parse tool calls from OpenRouter response (OpenAI-compatible)
+# OpenRouter normalizes responses from all providers to OpenAI format
+provider_parse_tool_calls() {
+    local response="$1"
+    # Standard OpenAI format
+    echo "$response" | jq -r '[.choices[0].message.tool_calls[]? | {id: .id, name: .function.name, arguments: .function.arguments}] // empty'
+}
+
+# Override: Format tool result for OpenRouter (OpenAI-compatible)
+provider_format_tool_result() {
+    local tool_call_id="$1"
+    local tool_name="$2"
+    local result="$3"
+    # Standard OpenAI format
+    jq -n --arg id "$tool_call_id" --arg content "$result" '{role: "tool", tool_call_id: $id, content: $content}'
 }

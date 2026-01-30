@@ -562,73 +562,261 @@ parse_command() {
 	echo "${args[@]}"
 }
 
-# Process the API response for a structured function_call
+# =============================================================================
+# TOOL USE LOOP
+# =============================================================================
+
+# Execute tools and return updated conversation file
+# Usage: execute_tools <response_json> <conversation_file>
+# Returns: path to new conversation file via stdout
+execute_tools() {
+	local response_json="$1"
+	local conversation_file="$2"
+	local tool_calls
+	
+	# Parse tool calls using provider-specific function
+	tool_calls=$(provider_parse_tool_calls "$response_json")
+	
+	if [[ -z "$tool_calls" ]] || [[ "$tool_calls" == "[]" ]]; then
+		echo "$conversation_file"
+		return 0
+	fi
+	
+	# Create new conversation file
+	local new_conversation_file
+	new_conversation_file="$(TMPDIR="${TMPDIR:-/tmp}" mktemp </dev/null)" || return 1
+	
+	# Copy existing conversation
+	if [[ -f "$conversation_file" ]]; then
+		cat "$conversation_file" > "$new_conversation_file"
+	fi
+	
+	# Add assistant message with tool calls
+	local assistant_msg
+	assistant_msg=$(echo "$response_json" | jq -c '{
+		role: "assistant",
+		content: .choices[0].message.content,
+		tool_calls: .choices[0].message.tool_calls
+	}')
+	printf '%s\n' "$assistant_msg" >> "$new_conversation_file"
+	
+	# Execute each tool call and add results
+	local i=0
+	echo "$tool_calls" | jq -c '.[]' | while IFS= read -r tool_call; do
+		local tool_id tool_name tool_args
+		tool_id=$(echo "$tool_call" | jq -r '.id')
+		tool_name=$(echo "$tool_call" | jq -r '.name')
+		tool_args=$(echo "$tool_call" | jq -r '.arguments')
+		
+		echo "Tool call: $tool_name (id: $tool_id)" >&2
+		
+		# Execute the tool
+		local tool_response
+		if [[ "$tool_name" == "bash" ]]; then
+			# Execute bash command directly
+			local command
+			command=$(echo "$tool_args" | jq -r '.command // empty')
+			if [[ -n "$command" ]]; then
+				echo "Executing bash command: $command" >&2
+				tool_response=$(eval "$command" 2>&1) || tool_response="{\"error\": \"Command failed with exit code $?\", \"output\": \"$tool_response\"}"
+			else
+				tool_response="{\"error\": \"No command provided to bash tool\"}"
+			fi
+		else
+			# Execute via MCP for other tools
+			if tool_response=$(send_mcp_request "$_arg_server" "tools/$tool_name" "$tool_args" 2>/dev/null); then
+				echo "Tool $tool_name executed successfully" >&2
+			else
+				tool_response="{\"error\": \"Failed to execute tool: $tool_name\"}"
+				echo "Tool $tool_name failed" >&2
+			fi
+		fi
+		
+		# Format tool result using provider-specific function
+		local tool_result_msg
+		tool_result_msg=$(provider_format_tool_result "$tool_id" "$tool_name" "$tool_response")
+		printf '%s\n' "$tool_result_msg" >> "$new_conversation_file"
+		
+		((i++))
+	done
+	
+	echo "$new_conversation_file"
+	
+	# Clean up old conversation file
+	if [[ -f "$conversation_file" ]] && [[ "$conversation_file" != "$new_conversation_file" ]]; then
+		rm -f "$conversation_file"
+	fi
+}
+
+# Main tool use loop
+# Usage: run_tool_loop <initial_conversation_file>
+# Returns: final response content via stdout
+run_tool_loop() {
+	local conversation_file="$1"
+	local max_iterations=10
+	local iteration=0
+	local final_response=""
+	
+	while [[ $iteration -lt $max_iterations ]]; do
+		((iteration++))
+		
+		# Build payload with current conversation
+		local payload_file
+		payload_file="$(TMPDIR="${TMPDIR:-/tmp}" mktemp </dev/null)"
+		
+		# Format messages from conversation file
+		local messages_json
+		messages_json="["
+		local first=1
+		while IFS= read -r line; do
+			[[ -z "$line" ]] && continue
+			[[ $first -eq 0 ]] && messages_json="$messages_json,"
+			messages_json="$messages_json$line"
+			first=0
+		done < "$conversation_file"
+		messages_json="$messages_json]"
+		
+		# Get system prompt
+		local system_prompt
+		system_prompt=$(build_full_system_prompt "$_arg_system")
+		
+		# Build payload using provider
+		local payload
+		payload=$(provider_build_payload "${_arg_model,,}" "$messages_json" "$_streamVal" \
+			$(build_payload_params))
+		
+		# Add tools if specified
+		if [[ -n "$_arg_tools" ]] && provider_supports_tools >/dev/null 2>&1; then
+			local formatted_tools
+			formatted_tools=$(provider_format_tools "$_arg_tools")
+			payload=$(echo "$payload" | jq --argjson tools "$formatted_tools" '. + {tools: $tools}')
+		fi
+		
+		echo "$payload" > "$payload_file"
+		
+		# Send request
+		local response
+		if [[ "$_arg_stream" == "on" ]]; then
+			# Streaming request
+			response=$(make_api_request "$payload_file" "true")
+		else
+			# Non-streaming request
+			response=$(make_api_request "$payload_file" "false")
+		fi
+		
+		# Check for errors
+		if [[ -z "$response" ]] || echo "$response" | jq -e '.error' >/dev/null 2>&1; then
+			rm -f "$payload_file"
+			die "API request failed" -2
+		fi
+		
+		# Check for tool calls
+		local has_tools
+		has_tools=$(provider_parse_tool_calls "$response")
+		
+		if [[ -z "$has_tools" ]] || [[ "$has_tools" == "[]" ]]; then
+			# No tool calls - we have final response
+			final_response=$(echo "$response" | jq -r '.choices[0].message.content // ""')
+			rm -f "$payload_file"
+			break
+		fi
+		
+		# Execute tools and update conversation
+		conversation_file=$(execute_tools "$response" "$conversation_file")
+		
+		# Cleanup
+		rm -f "$payload_file"
+	done
+	
+	if [[ $iteration -ge $max_iterations ]]; then
+		echo "Warning: Maximum tool iterations ($max_iterations) reached" >&2
+	fi
+	
+	echo "$final_response"
+}
+
+# Build extra payload parameters
+build_payload_params() {
+	local params=""
+	[[ -n "$_arg_max_tokens" ]] && params="$params max_tokens=$_arg_max_tokens"
+	[[ -n "$_arg_temperature" ]] && params="$params temperature=$_arg_temperature"
+	[[ -n "$_arg_top_p" ]] && params="$params top_p=$_arg_top_p"
+	[[ -n "$_arg_stop" ]] && params="$params stop=$_arg_stop"
+	[[ -n "$_arg_frequency_penalty" ]] && params="$params frequency_penalty=$_arg_frequency_penalty"
+	[[ -n "$_arg_presence_penalty" ]] && params="$params presence_penalty=$_arg_presence_penalty"
+	[[ -n "$_arg_seed" ]] && params="$params seed=$_arg_seed"
+	[[ -n "$_arg_tool_choice" ]] && params="$params tool_choice=$_arg_tool_choice"
+	echo "$params"
+}
+
+# Make API request
+# Usage: make_api_request <payload_file> <stream>
+make_api_request() {
+	local payload_file="$1"
+	local stream="$2"
+	local api_url
+	
+	api_url="$_arg_api"
+	[[ "$api_url" != */chat/completions ]] && api_url="$api_url/chat/completions"
+	
+	local curl_cmd=(curl -s -X POST "$api_url")
+	
+	# Get headers from provider
+	if type provider_get_headers &>/dev/null; then
+		local provider_headers=()
+		provider_get_headers "$_arg_api_key" provider_headers
+		curl_cmd+=("${provider_headers[@]}")
+	else
+		curl_cmd+=(-H "Content-Type: application/json")
+		[[ -n "$_arg_api_key" ]] && curl_cmd+=(-H "Authorization: Bearer $_arg_api_key")
+	fi
+	
+	curl_cmd+=(-d "@$payload_file")
+	
+	if [[ "$stream" == "true" ]]; then
+		# For streaming, we need to capture and parse
+		local full_response=""
+		"${curl_cmd[@]}" 2>/dev/null | while IFS= read -r line; do
+			[[ "${line:0:5}" == "data:" ]] && full_response="$full_response${line#data: }"
+		done
+		echo "$full_response"
+	else
+		"${curl_cmd[@]}" 2>/dev/null
+	fi
+}
+
+# Legacy function - kept for backward compatibility but redirects to new implementation
 process_function_call() {
 	local response_json="$1"
-	local fc
-	fc=$(echo "$response_json" | jq -r '.choices[0].message.function_call // empty')
-	if [[ -n "$fc" ]]; then
-		local tool_name
-		local tool_args
-		tool_name=$(echo "$fc" | jq -r '.name')
-		tool_args=$(echo "$fc" | jq -r '.arguments')
-		echo "Function call detected: tool '$tool_name' with arguments: $tool_args" >&2
-
-		# Execute the tool call using MCP
-		local tool_response
-		tool_response=$(send_mcp_request "$_arg_server" "tools/$tool_name" "$tool_args") || {
-			die "Failed to execute tool: $tool_name" -2
-			return 1
-		}
-
-		# Continue the conversation with the tool response
-		local conversation_file
-		conversation_file="$(TMPDIR="${TMPDIR:-/tmp}" mktemp </dev/null)" || return 1
-
-		# Save previous messages and tool call
-		if [ "$_arg_conversation" != "" ]; then
-			cat "$_arg_conversation" >"$conversation_file"
+	local conversation_file="$2"
+	
+	if [[ -z "$conversation_file" ]]; then
+		conversation_file="$(TMPDIR="${TMPDIR:-/tmp}" mktemp </dev/null)"
+		if [[ -n "$_arg_conversation" ]]; then
+			cat "$_arg_conversation" > "$conversation_file"
 		fi
-
-		# Add the assistant's function call message
-		printf '{"role": "assistant", "content": null, "function_call": %s}\n' "$(echo "$fc" | jq -c '.')" >>"$conversation_file"
-
-		# Add the function response message
-		printf '{"role": "function", "name": "%s", "content": %s}\n' "$tool_name" "$(echo "$tool_response" | jq -R -s '.')" >>"$conversation_file"
-
-		# Call ask again with the updated conversation
+	fi
+	
+	local new_conversation
+	new_conversation=$(execute_tools "$response_json" "$conversation_file")
+	
+	# If tools were executed, continue the loop
+	local tool_calls
+	tool_calls=$(provider_parse_tool_calls "$response_json")
+	
+	if [[ -n "$tool_calls" ]] && [[ "$tool_calls" != "[]" ]]; then
+		# Recursively call with new conversation
 		local ask_cmd=("$0" "$_arg_prompt")
-		[ "$_arg_api" != "" ] && ask_cmd+=(--api "$_arg_api")
-		[ "$_arg_api_key" != "" ] && ask_cmd+=(--api-key "$_arg_api_key")
-		[ "$_arg_model" != "" ] && ask_cmd+=(--model "$_arg_model")
-		[ "$_arg_system" != "" ] && ask_cmd+=(--system "$_arg_system")
-		[ "$_arg_provider" != "" ] && ask_cmd+=(--provider "$_arg_provider")
-		[ "$_arg_tools" != "" ] && ask_cmd+=(--tools "$_arg_tools")
-		[ "$_arg_tool_choice" != "" ] && ask_cmd+=(--tool_choice "$_arg_tool_choice")
-		[ "$_arg_max_tokens" != "" ] && ask_cmd+=(--max_tokens "$_arg_max_tokens")
-		[ "$_arg_temperature" != "" ] && ask_cmd+=(--temperature "$_arg_temperature")
-		[ "$_arg_top_p" != "" ] && ask_cmd+=(--top_p "$_arg_top_p")
-		[ "$_arg_stop" != "" ] && ask_cmd+=(--stop "$_arg_stop")
-		[ "$_arg_frequency_penalty" != "" ] && ask_cmd+=(--frequency_penalty "$_arg_frequency_penalty")
-		[ "$_arg_presence_penalty" != "" ] && ask_cmd+=(--presence_penalty "$_arg_presence_penalty")
-		[ "$_arg_seed" != "" ] && ask_cmd+=(--seed "$_arg_seed")
-		[ "$_arg_logit_bias" != "" ] && ask_cmd+=(--logit_bias "$_arg_logit_bias")
-		[ "$_arg_logprobs" != "" ] && ask_cmd+=(--logprobs "$_arg_logprobs")
-		[ "$_arg_top_logprobs" != "" ] && ask_cmd+=(--top_logprobs "$_arg_top_logprobs")
-		[ "$_arg_response_format" != "" ] && ask_cmd+=(--response_format "$_arg_response_format")
-		[ "$_arg_structured_outputs" != "" ] && ask_cmd+=(--structured_outputs "$_arg_structured_outputs")
-		[ "$_arg_log" != "" ] && ask_cmd+=(--log "$_arg_log")
-		[ "$_arg_stream" == "on" ] && ask_cmd+=(--stream)
-		[ "$_arg_safe_mode" == "on" ] && ask_cmd+=(--safe-mode)
-		ask_cmd+=(--conversation "$conversation_file")
-
-		# Execute the follow-up request
+		[[ -n "$_arg_api" ]] && ask_cmd+=(--api "$_arg_api")
+		[[ -n "$_arg_api_key" ]] && ask_cmd+=(--api-key "$_arg_api_key")
+		[[ -n "$_arg_model" ]] && ask_cmd+=(--model "$_arg_model")
+		[[ -n "$_arg_provider" ]] && ask_cmd+=(--provider "$_arg_provider")
+		[[ -n "$_arg_tools" ]] && ask_cmd+=(--tools "$_arg_tools")
+		[[ -n "$_arg_tool_choice" ]] && ask_cmd+=(--tool_choice "$_arg_tool_choice")
+		[[ "$_arg_safe_mode" == "on" ]] && ask_cmd+=(--safe-mode)
+		ask_cmd+=(--conversation "$new_conversation")
+		
 		"${ask_cmd[@]}"
-		local status=$?
-
-		# Cleanup
-		rm -f "$conversation_file"
-		return $status
 	fi
 }
 
@@ -639,6 +827,18 @@ tmp_payload="$(TMPDIR="${TMPDIR:-/tmp}" mktemp </dev/null)" || return 1
 _streamVal="false"
 if [ "$_arg_stream" == "on" ]; then
 	_streamVal="true"
+fi
+
+# =============================================================================
+# DEFAULT BASH TOOL
+# =============================================================================
+
+# Always provide a bash tool if no tools specified
+default_bash_tool='[{"type": "function", "function": {"name": "bash", "description": "Execute a bash command and return the output", "parameters": {"type": "object", "properties": {"command": {"type": "string", "description": "The bash command to execute"}}, "required": ["command"]}}}]}'
+
+# Use default bash tool if no tools specified by user
+if [[ -z "$_arg_tools" ]]; then
+	_arg_tools="$default_bash_tool"
 fi
 
 # Extract provider before creating payload
@@ -772,31 +972,26 @@ fi
 if [ "$_has_binary_attachments" -eq 1 ]; then
 	# Content array is already in temp file from earlier, read from file instead of variable
 	# Use --slurpfile to read JSON from file without bash variable limits
+	# ALWAYS use default system prompt combined with user system prompt
+	local full_system_prompt
+	full_system_prompt=$(build_full_system_prompt "$_arg_system")
+	
 	if [ "$_arg_conversation" != "" ]; then
 		# Build messages with content array support - read content from file
-		jq -n --arg model "${_arg_model,,}" --arg system "$_arg_system" --argjson stream "$_streamVal" --slurpfile content "$_content_array_file" '{
-			model: $model,
-			messages: [
-				($system | select(length > 0) | {"role": "system", "content": .}) // empty,
-				{"role": "user", "content": $content[0]}
-			] + [inputs | fromjson | select(.role != null)],
-			stream: $stream
-		}' "$_arg_conversation" > "$tmp_payload"
-	elif [ "$_arg_system" != "" ]; then
-		# System + user with content array
-		jq -n --arg model "${_arg_model,,}" --arg system "$_arg_system" --argjson stream "$_streamVal" --slurpfile content "$_content_array_file" '{
+		jq -n --arg model "${_arg_model,,}" --arg system "$full_system_prompt" --argjson stream "$_streamVal" --slurpfile content "$_content_array_file" '{
 			model: $model,
 			messages: [
 				{"role": "system", "content": $system},
 				{"role": "user", "content": $content[0]}
-			],
+			] + [inputs | fromjson | select(.role != null)],
 			stream: $stream
-		}' > "$tmp_payload"
+		}' "$_arg_conversation" > "$tmp_payload"
 	else
-		# Just user with content array
-		jq -n --arg model "${_arg_model,,}" --argjson stream "$_streamVal" --slurpfile content "$_content_array_file" '{
+		# System + user with content array (ALWAYS includes system prompt)
+		jq -n --arg model "${_arg_model,,}" --arg system "$full_system_prompt" --argjson stream "$_streamVal" --slurpfile content "$_content_array_file" '{
 			model: $model,
 			messages: [
+				{"role": "system", "content": $system},
 				{"role": "user", "content": $content[0]}
 			],
 			stream: $stream
@@ -807,13 +1002,15 @@ if [ "$_has_binary_attachments" -eq 1 ]; then
 	rm -f "$_content_array_file"
 else
 	# Standard text-only messages (original behavior)
+	# ALWAYS use default system prompt combined with user system prompt
+	local full_system_prompt
+	full_system_prompt=$(build_full_system_prompt "$_arg_system")
+	
 	if [ "$_arg_conversation" != "" ]; then
 		# Read messages from conversation file
 		messages="["
-		# Add system message if provided
-		if [ "$_arg_system" != "" ]; then
-			messages="$messages{\"role\": \"system\", \"content\": $(jq -R -s '.' <<<"$_arg_system")}"
-		fi
+		# ALWAYS add system message
+		messages="$messages{\"role\": \"system\", \"content\": $(jq -R -s '.' <<<"$full_system_prompt")}"
 		
 		# Read existing conversation messages
 		while IFS= read -r line; do
@@ -832,10 +1029,11 @@ else
 		messages="$messages{\"role\": \"user\", \"content\": $(jq -R -s '.' <<<"$_arg_prompt")}"
 		messages="$messages]"
 
-		# Create payload with conversation history
-		printf '{\n\t"model": "%s",\n\t"messages": %s,\n\t"stream": %s%s\n}' "${_arg_model,,}" "$messages" "$_streamVal" "$([ "$_arg_tools" != "" ] && printf ',\n\t"functions": %s' "$_arg_tools")" >"$tmp_payload"
-	elif [ "$_arg_system" != "" ] && [ "$_arg_prompt" != "" ]; then
-		jq -R -s '.' <<<"$_arg_system" >"$tmp_payload.system"
+		# Create payload with conversation history - use "tools" not "functions"
+		printf '{\n\t"model": "%s",\n\t"messages": %s,\n\t"stream": %s%s\n}' "${_arg_model,,}" "$messages" "$_streamVal" "$([ "$_arg_tools" != "" ] && printf ',\n\t"tools": %s' "$_arg_tools")" >"$tmp_payload"
+	elif [ "$_arg_prompt" != "" ]; then
+		# ALWAYS include system prompt
+		jq -R -s '.' <<<"$full_system_prompt" >"$tmp_payload.system"
 		jq -R -s '.' <<<"$_arg_prompt" >"$tmp_payload.user"
 		printf '{
 			"model": "%s",
