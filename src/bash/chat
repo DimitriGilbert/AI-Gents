@@ -510,6 +510,16 @@ trap on_interrupt INT;
 # @parseArger-end
 
 source "$_SCRIPT_DIR/common"
+source "$_SCRIPT_DIR/lib/validation"
+source "$_SCRIPT_DIR/lib/security"
+
+# Initialize security (empty blacklist by default)
+load_command_blacklist
+
+# Validate LLM parameters
+if ! validate_all_llm_params; then
+	die "Parameter validation failed" 1
+fi
 
 # Create log file if title is provided or logging is enabled
 log_file=""

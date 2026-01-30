@@ -10,17 +10,22 @@
    - `src/bash/lib/validation` - LLM parameter validators (temperature, top_p, max_tokens, frequency_penalty, presence_penalty, seed, provider)
    - `src/bash/lib/security` - Command blacklist system (empty by default, user-configurable via `~/.config/ai-gents/command-blacklist`)
    - `src/bash/lib/core` - Logging utilities, caching, lazy loading helpers
+   - `src/bash/lib/api` - HTTP client with connection pooling, retry logic, streaming support
 
-2. **Security Integration in `src/bash/ask`**
-   - Integrated validation library - all LLM parameters validated before API calls
-   - Integrated security library with blacklist filtering for `#!/command;` syntax
+2. **Security Integration Across All Commands**
+   - `src/bash/ask` - Integrated validation and security with blacklist filtering for `#!/command;` syntax
+   - `src/bash/chat` - Integrated validation and security libraries
+   - `src/bash/_agent/ask` - Integrated validation and security libraries
+   - `src/bash/_agent/chat` - Integrated validation and security libraries
+   - All LLM parameters validated before API calls
    - Commands are double-checked before execution
-   - Shellcheck clean (fixed SC2168, SC2181)
+   - All files shellcheck clean
 
-### 🔄 Next Steps
-- Create API library (`src/bash/lib/api`) with connection pooling
-- Begin provider plugin system (Week 2)
-- Update remaining commands (chat, agent) with validation/security
+### 🔄 Next Steps (Week 2)
+- Begin provider plugin system
+- Create base provider interface (`src/bash/lib/providers/_base`)
+- Migrate OpenRouter provider to plugin
+- Migrate OpenAI provider to plugin
 
 ---
 

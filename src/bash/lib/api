@@ -1,0 +1,173 @@
+#!/bin/bash
+#
+# API library for AI-Gents
+# HTTP client with connection pooling and retry logic
+# Uses curl's cookie jar for HTTP keep-alive
+#
+
+# Connection pool directory
+_API_CONN_POOL_DIR="${TMPDIR:-/tmp}/ai-gents-conn"
+
+# Initialize connection pool
+api_init_pool() {
+    mkdir -p "$_API_CONN_POOL_DIR"
+}
+
+# Get connection identifier for a host
+# Usage: _api_get_conn_id <url>
+_api_get_conn_id() {
+    local url="$1"
+    # Extract host:port from URL
+    local host
+    if [[ "$url" =~ ^https?://([^/]+) ]]; then
+        host="${BASH_REMATCH[1]}"
+    else
+        host="$url"
+    fi
+    # Sanitize for filename
+    echo "$host" | tr '/:' '_'
+}
+
+# Build curl command with connection pooling
+# Usage: api_curl_cmd <endpoint_url>
+# Returns: array of curl arguments via nameref
+api_curl_cmd() {
+    local endpoint="$1"
+    local -n curl_args="$2"
+    local conn_id
+    conn_id="$(_api_get_conn_id "$endpoint")"
+    local cookie_jar="$_API_CONN_POOL_DIR/${conn_id}.jar"
+    
+    curl_args=(
+        -s  # silent
+        -X POST
+        -H "Content-Type: application/json"
+        --cookie-jar "$cookie_jar"
+        --cookie "$cookie_jar"
+        --keepalive-time 60
+        --max-time 300
+        --retry 0  # We handle retries manually
+    )
+}
+
+# Make API request with retry logic
+# Usage: api_request <endpoint> <payload_file> <api_key> [timeout]
+# Returns: HTTP response body via stdout, exit code reflects success/failure
+api_request() {
+    local endpoint="$1"
+    local payload_file="$2"
+    local api_key="$3"
+    local timeout="${4:-300}"
+    local max_retries=3
+    local retry_delay=1
+    
+    # Build base curl command
+    local curl_base=()
+    api_curl_cmd "$endpoint" curl_base
+    
+    # Add auth if provided
+    if [[ -n "$api_key" ]]; then
+        curl_base+=(-H "Authorization: Bearer ${api_key}")
+    fi
+    
+    # Add payload
+    curl_base+=(-d "@${payload_file}")
+    
+    # Add endpoint and timeout
+    curl_base+=("$endpoint")
+    curl_base+=(--max-time "$timeout")
+    
+    local attempt=1
+    local response
+    local http_code
+    local exit_code
+    
+    while [[ $attempt -le $max_retries ]]; do
+        # Capture both response and HTTP code
+        response=$("${curl_base[@]}" -w "\n%{http_code}" 2>&1)
+        exit_code=$?
+        
+        # Extract HTTP code (last line)
+        http_code=$(echo "$response" | tail -n1)
+        
+        # Extract body (everything except last line)
+        response=$(echo "$response" | head -n -1)
+        
+        # Check success conditions
+        if [[ $exit_code -eq 0 && "$http_code" == "200" ]]; then
+            echo "$response"
+            return 0
+        fi
+        
+        # Log failure if verbose
+        if [[ "${_verbose_level:-0}" -ge 1 ]]; then
+            log "API request failed (attempt $attempt/$max_retries): HTTP $http_code, exit $exit_code" -1
+        fi
+        
+        # Don't retry on certain errors
+        if [[ "$http_code" =~ ^4[0-9]{2}$ && "$http_code" != "429" ]]; then
+            # 4xx errors (except 429 rate limit) are client errors, don't retry
+            break
+        fi
+        
+        # Wait before retry with exponential backoff
+        if [[ $attempt -lt $max_retries ]]; then
+            sleep $retry_delay
+            retry_delay=$((retry_delay * 2))
+        fi
+        
+        ((attempt++))
+    done
+    
+    # All retries exhausted or non-retryable error
+    echo "$response"
+    return 1
+}
+
+# Make streaming API request
+# Usage: api_request_stream <endpoint> <payload_file> <api_key> <callback_function>
+# Callback receives each line of SSE data
+api_request_stream() {
+    local endpoint="$1"
+    local payload_file="$2"
+    local api_key="$3"
+    local callback="$4"
+    
+    # Build base curl command
+    local curl_base=()
+    api_curl_cmd "$endpoint" curl_base
+    
+    # Add auth if provided
+    if [[ -n "$api_key" ]]; then
+        curl_base+=(-H "Authorization: Bearer ${api_key}")
+    fi
+    
+    # Add payload and streaming options
+    curl_base+=(-d "@${payload_file}")
+    curl_base+=(-N)  # No buffer for streaming
+    curl_base+=("$endpoint")
+    
+    # Execute and process stream
+    "${curl_base[@]}" 2>/dev/null | while IFS= read -r line || [[ -n "$line" ]]; do
+        $callback "$line"
+    done
+    
+    return "${PIPESTATUS[0]}"
+}
+
+# Cleanup connection pool
+api_cleanup_pool() {
+    if [[ -d "$_API_CONN_POOL_DIR" ]]; then
+        rm -rf "$_API_CONN_POOL_DIR"
+    fi
+}
+
+# Get connection pool stats for debugging
+api_pool_stats() {
+    local conn_count=0
+    if [[ -d "$_API_CONN_POOL_DIR" ]]; then
+        conn_count=$(find "$_API_CONN_POOL_DIR" -name "*.jar" 2>/dev/null | wc -l)
+    fi
+    echo "Active connections: $conn_count"
+    echo "Pool directory: $_API_CONN_POOL_DIR"
+}
