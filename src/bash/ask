@@ -513,6 +513,7 @@ source "$_SCRIPT_DIR/common"
 source "$_SCRIPT_DIR/lib/validation"
 source "$_SCRIPT_DIR/lib/security"
 source "$_SCRIPT_DIR/lib/attachments"
+source "$_SCRIPT_DIR/lib/providers/_loader"
 
 # Initialize security (empty blacklist by default)
 load_command_blacklist
@@ -888,14 +889,28 @@ if [ "$_arg_api_key" = "" ] && [ "$_arg_provider" != "" ]; then
 	_arg_api_key="$(get_provider_credential "$_arg_provider")"
 fi
 
-# Send the request and stream response
-curl_cmd=(curl -f -X POST "$_arg_api"
-	-H "Content-Type: application/json"
-	-d "@${tmp_payload}")
-
-if [ "$_arg_api_key" != "" ]; then
-	curl_cmd+=(-H "Authorization: Bearer $_arg_api_key")
+# Load provider to get proper headers (for attribution, etc.)
+if [ "$_arg_provider" != "" ]; then
+	provider_load "$_arg_provider" 2>/dev/null || true
 fi
+
+# Build curl command with provider-specific headers
+curl_cmd=(curl -f -X POST "$_arg_api")
+
+# Get headers from provider if available, otherwise build manually
+if [ "$_arg_provider" != "" ] && type provider_get_headers &>/dev/null; then
+	provider_headers=()
+	provider_get_headers "$_arg_api_key" provider_headers
+	curl_cmd+=("${provider_headers[@]}")
+else
+	# Manual fallback
+	curl_cmd+=(-H "Content-Type: application/json")
+	if [ "$_arg_api_key" != "" ]; then
+		curl_cmd+=(-H "Authorization: Bearer $_arg_api_key")
+	fi
+fi
+
+curl_cmd+=(-d "@${tmp_payload}")
 
 # die "${curl_cmd[*]}\n\n$(cat "$tmp_payload")" 0
 
