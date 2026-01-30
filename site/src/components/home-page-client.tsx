@@ -20,17 +20,17 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
   const bodyTextColor = isXP ? '#333333' : '#3C2F2F';
 
   return (
-    <main className="flex min-h-screen flex-col items-center py-8 px-4">
+    <main className="min-h-screen py-8 px-4 md:px-6 lg:px-8">
       {/* Hero Section - Welcome Window */}
       <WindowFrame 
         title="Welcome to AI-Gents" 
-        className="mb-8 max-w-4xl"
+        className="mb-8 w-full cascade-in cascade-delay-1 z-layer-1"
         width="w-full"
         
       >
-        <div className="p-8 text-center">
+        <div className="window-content-spacious text-center">
           <h1 
-            className="text-5xl font-bold mb-4"
+            className="os-heading mb-5"
             style={{ 
               color: headingColor,
               textShadow: isXP ? 'none' : '0 1px 0 rgba(255,255,255,0.8), 0 -1px 0 rgba(0,0,0,0.1)'
@@ -39,13 +39,13 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
             AI-Gents
           </h1>
           <h2 
-            className="text-xl mb-2"
+            className="os-subheading mb-3"
             style={{ color: isXP ? '#555555' : '#5A4A4A' }}
           >
             Gently AI-up your terminal and{" "}
             <span style={{ color: accentColor, fontWeight: 'bold' }}>CLI</span> apps
           </h2>
-          <h3 style={{ color: isXP ? '#666666' : '#6A5A5A' }}>
+          <h3 className="os-body-text" style={{ color: isXP ? '#666666' : '#6A5A5A' }}>
             With (or without) your own{" "}
             <span style={{ 
               color: accentColor, 
@@ -58,63 +58,15 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
         </div>
       </WindowFrame>
 
-      {/* Main Content Grid */}
-      <div className="container max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Bento Desktop Grid */}
+      <div className="container mx-auto max-w-[1600px] bento-grid">
         
-        {/* Left Column - What are agents? */}
-        <WindowFrame title="What are agents?" className="h-full" >
-          <div className="p-6 space-y-4" style={{ color: bodyTextColor }}>
-            <h3 
-              className="text-xl font-bold text-center py-4"
-              style={{ color: headingColor }}
-            >
-              A &ldquo;spec&rdquo; for{" "}
-              <span style={{ color: accentColor, fontWeight: 'bold' }}>agents</span>
-            </h3>
-            <p>
-              AI-gents started as a format/spec/... for me to store my{" "}
-              <span style={{ color: accentColor, fontWeight: 'bold' }}>agents</span>
-            </p>
-            <p>
-              See, everyone and their grand-mother do &lt;&lt;
-              <span style={{ color: accentColor, fontWeight: 'bold' }}>AGENTS</span>
-              &gt;&gt; now, and all these have their own proprietary way of doing it.
-            </p>
-            <p>
-              I just want to store my{" "}
-              <span style={{ color: accentColor, fontWeight: 'bold' }}>agents</span>{" "}
-              in a simple way, and then use them with any LLM. Is this too much ?!?!?
-            </p>
-            <p>That is how it started...but first...</p>
-            
-            <h3 className="text-lg font-bold pt-4">
-              What are{" "}
-              <span style={{ color: accentColor, fontWeight: 'bold' }}>agents</span>?{" "}
-              <span style={{ color: isXP ? '#245EDC' : '#772953' }}>REALLY?</span>
-            </h3>
-            <p>
-              From all the marketing words salad BS we are force fed, I would
-              define an agent as...
-            </p>
-            <p>
-              A fancy prompt... (or a set of prompts, that can be chained)
-              tailored to a specific task.
-            </p>
-            <p>
-              They might come with documents, tools and what not, the point
-              remains, they&apos;re &ldquo;just&rdquo; a fancy prompt.
-            </p>
-            <RetroPanel title="Key Point" className="mt-4" >
-              <p className="text-sm" style={{ color: isXP ? '#555555' : '#5A4A4A' }}>
-                That does not seem that hard is it? It is just a YAML file with some structure!
-              </p>
-            </RetroPanel>
-          </div>
-        </WindowFrame>
-
-        {/* Right Column - Installation Terminal */}
-        <WindowFrame title={isXP ? "Command Prompt - Installation" : "Terminal - Installation"} className="h-full" >
-          <div className="p-4">
+        {/* Installation Terminal - Wide, Tall */}
+        <WindowFrame 
+          title={isXP ? "Command Prompt - Installation" : "Terminal - Installation"} 
+          className="col-span-12 md:col-span-8 lg:col-span-8 window-min-h-lg cascade-in cascade-delay-2 offset-left z-layer-2"
+        >
+          <div className="window-content-spacious">
             <Terminable
               startLine=""
               title={isXP ? "C:\\Windows\\System32\\cmd.exe" : "Install AI-Gents"}
@@ -149,14 +101,14 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
                 },
               ]}
             />
-            <div className="mt-4 flex justify-center gap-3">
+            <div className="mt-6 flex justify-center gap-4">
               <Link href="https://github.com/DimitriGilbert/ai-gents/archive/refs/heads/main.zip">
-                <RetroButton variant="primary" size="sm" >
+                <RetroButton variant="primary" size="md" >
                   Download ZIP
                 </RetroButton>
               </Link>
               <Link href="https://github.com/DimitriGilbert/ai-gents">
-                <RetroButton size="sm" >
+                <RetroButton size="md" >
                   View on GitHub
                 </RetroButton>
               </Link>
@@ -164,15 +116,18 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
           </div>
         </WindowFrame>
 
-        {/* Agent Config Window */}
-        <WindowFrame title="agent.yml - Configuration File" className="h-full" >
-          <div className="p-4">
+        {/* Agent Config - Compact */}
+        <WindowFrame 
+          title="agent.yml - Configuration File" 
+          className="col-span-12 md:col-span-4 lg:col-span-4 window-min-h cascade-in cascade-delay-3 z-layer-3"
+        >
+          <div className="window-content-spacious">
             <pre 
-              className="max-h-[500px] overflow-x-auto rounded p-4 font-mono text-sm"
+              className="max-h-[400px] overflow-x-auto rounded-lg p-4 font-mono text-[15px]"
               style={{ 
                 background: isXP ? '#000000' : '#1C1C1C', 
                 color: isXP ? '#C0C0C0' : '#4E9A06',
-                border: isXP ? '1px solid #7A8A9A' : '1px solid #3C2F2F',
+                border: isXP ? '2px solid #7A8A9A' : '2px solid #3C2F2F',
                 fontFamily: isXP ? "'Courier New', monospace" : "monospace",
               }}
             >
@@ -181,18 +136,94 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
           </div>
         </WindowFrame>
 
-        {/* What is it? Window */}
-        <WindowFrame title="A text file to store structured data..." className="h-full" >
-          <div className="p-6 space-y-4" style={{ color: bodyTextColor }}>
-            <h3 className="text-xl font-bold text-center pb-4">
+        {/* What Are Agents - Medium */}
+        <WindowFrame 
+          title="What are agents?" 
+          className="col-span-12 md:col-span-6 lg:col-span-6 window-min-h cascade-in cascade-delay-4 offset-right z-layer-2"
+        >
+          <div className="window-content-spacious space-y-5" style={{ color: bodyTextColor }}>
+            <h3 
+              className="os-heading text-center"
+              style={{ color: headingColor }}
+            >
+              A &ldquo;spec&rdquo; for{" "}
+              <span style={{ color: accentColor, fontWeight: 'bold' }}>agents</span>
+            </h3>
+            <p className="os-body-text">
+              AI-gents started as a format/spec/... for me to store my{" "}
+              <span style={{ color: accentColor, fontWeight: 'bold' }}>agents</span>
+            </p>
+            <p className="os-body-text">
+              See, everyone and their grand-mother do &lt;&lt;
+              <span style={{ color: accentColor, fontWeight: 'bold' }}>AGENTS</span>
+              &gt;&gt; now, and all these have their own proprietary way of doing it.
+            </p>
+            <p className="os-body-text">
+              I just want to store my{" "}
+              <span style={{ color: accentColor, fontWeight: 'bold' }}>agents</span>{" "}
+              in a simple way, and then use them with any LLM. Is this too much ?!?!?
+            </p>
+            <p className="os-body-text">That is how it started...but first...</p>
+            
+            <h3 className="os-subheading pt-4">
+              What are{" "}
+              <span style={{ color: accentColor, fontWeight: 'bold' }}>agents</span>?{" "}
+              <span style={{ color: isXP ? '#245EDC' : '#772953' }}>REALLY?</span>
+            </h3>
+            <p className="os-body-text">
+              From all the marketing words salad BS we are force fed, I would
+              define an agent as...
+            </p>
+            <p className="os-body-text">
+              A fancy prompt... (or a set of prompts, that can be chained)
+              tailored to a specific task.
+            </p>
+            <p className="os-body-text">
+              They might come with documents, tools and what not, the point
+              remains, they&apos;re &ldquo;just&rdquo; a fancy prompt.
+            </p>
+            <div 
+              className="mt-6 p-4 rounded-lg"
+              style={{
+                background: isXP 
+                  ? 'linear-gradient(to bottom, #E8E8E8 0%, #D8D8D8 100%)' 
+                  : 'linear-gradient(to bottom, #E8E0D5 0%, #DDD5CA 100%)',
+                border: isXP ? '1px solid #A0A0A0' : '1px solid #C0B8A8',
+                borderTopColor: isXP ? '#F0F0F0' : '#E8E0D5',
+                borderLeftColor: isXP ? '#F0F0F0' : '#E8E0D5',
+                boxShadow: isXP 
+                  ? '0 1px 0 rgba(255,255,255,0.8) inset, 0 -1px 0 rgba(0,0,0,0.05) inset, 0 2px 4px rgba(0,0,0,0.1)' 
+                  : '0 1px 0 rgba(255,255,255,0.8) inset, 0 -1px 0 rgba(0,0,0,0.05) inset, 0 2px 4px rgba(0,0,0,0.1)',
+              }}
+            >
+              <h4 
+                className="text-sm font-semibold mb-2 uppercase tracking-wide"
+                style={{ color: isXP ? '#333333' : '#5A4A4A' }}
+              >
+                Key Point
+              </h4>
+              <p className="text-sm os-body-text" style={{ color: isXP ? '#555555' : '#5A4A4A' }}>
+                That does not seem that hard is it? It is just a YAML file with some structure!
+              </p>
+            </div>
+          </div>
+        </WindowFrame>
+
+        {/* Bash Section - Medium */}
+        <WindowFrame 
+          title="A text file to store structured data..." 
+          className="col-span-12 md:col-span-6 lg:col-span-6 window-min-h cascade-in cascade-delay-5 z-layer-1"
+        >
+          <div className="window-content-spacious space-y-5" style={{ color: bodyTextColor }}>
+            <h3 className="os-heading text-center">
               A text file to store structured data...
             </h3>
-            <p>
+            <p className="os-body-text">
               I know, when you put it like that, it sounds{" "}
               <span style={{ color: '#CC0000', fontWeight: 'bold' }}>LAME</span> AF...{" "}
               <span style={{ color: accentColor }}>it is</span>...
             </p>
-            <p>
+            <p className="os-body-text">
               So because of that, the fact that I was going to have to test it
               (the agent file format) and because I do{" "}
               <span style={{ 
@@ -204,7 +235,7 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
               </span>
               ...
             </p>
-            <p>
+            <p className="os-body-text">
               I made a &ldquo;chat app&rdquo;, yuuup, guessed it, in{" "}
               <span style={{ 
                 fontWeight: 'bold',
@@ -215,14 +246,33 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
               </span>
             </p>
             
-            <RetroPanel title="Dependencies" className="mt-4" >
-              <div className="flex flex-wrap gap-2 text-sm">
+            <div 
+              className="mt-6 p-4 rounded-lg"
+              style={{
+                background: isXP 
+                  ? 'linear-gradient(to bottom, #E8E8E8 0%, #D8D8D8 100%)' 
+                  : 'linear-gradient(to bottom, #E8E0D5 0%, #DDD5CA 100%)',
+                border: isXP ? '1px solid #A0A0A0' : '1px solid #C0B8A8',
+                borderTopColor: isXP ? '#F0F0F0' : '#E8E0D5',
+                borderLeftColor: isXP ? '#F0F0F0' : '#E8E0D5',
+                boxShadow: isXP 
+                  ? '0 1px 0 rgba(255,255,255,0.8) inset, 0 -1px 0 rgba(0,0,0,0.05) inset, 0 2px 4px rgba(0,0,0,0.1)' 
+                  : '0 1px 0 rgba(255,255,255,0.8) inset, 0 -1px 0 rgba(0,0,0,0.05) inset, 0 2px 4px rgba(0,0,0,0.1)',
+              }}
+            >
+              <h4 
+                className="text-sm font-semibold mb-3 uppercase tracking-wide"
+                style={{ color: isXP ? '#333333' : '#5A4A4A' }}
+              >
+                Dependencies
+              </h4>
+              <div className="flex flex-wrap gap-2">
                 {['jq', 'yq', 'curl', 'rlwrap'].map((dep) => (
                   <span 
                     key={dep}
-                    className="px-2 py-1 rounded font-mono"
+                    className="px-3 py-1.5 rounded-md font-mono text-sm"
                     style={{
-                      background: isXP ? '#E8E8E8' : '#E8E0D5',
+                      background: isXP ? '#F5F5F5' : '#F0EBE3',
                       border: isXP ? '1px solid #A0A0A0' : '1px solid #C0B8A8',
                       color: isXP ? '#333333' : '#5A4A4A',
                       fontFamily: isXP ? "'Courier New', monospace" : 'monospace',
@@ -232,28 +282,31 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
                   </span>
                 ))}
               </div>
-            </RetroPanel>
+            </div>
           </div>
         </WindowFrame>
 
-        {/* Ask and Chat Window */}
-        <WindowFrame title="Ask or chat with an AI, in your terminal!" className="lg:col-span-2" >
-          <div className="p-6">
+        {/* Ask or Chat - Wide */}
+        <WindowFrame 
+          title="Ask or chat with an AI, in your terminal!" 
+          className="col-span-12 md:col-span-8 lg:col-span-8 window-min-h-lg cascade-in cascade-delay-6 offset-left z-layer-2"
+        >
+          <div className="window-content-spacious">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-4" style={{ color: bodyTextColor }}>
-                <h3 className="text-xl font-bold text-center pb-4">
+              <div className="space-y-5" style={{ color: bodyTextColor }}>
+                <h3 className="os-heading text-center">
                   Ask or chat with an ai, in your terminal!
                 </h3>
-                <p>
+                <p className="os-body-text">
                   I don&apos;t know about you, but I very often have at least one terminal
                   open
                 </p>
-                <p>
+                <p className="os-body-text">
                   For a quick AI fix, open a terminal,{" "}
                   <code 
-                    className="px-1 py-0.5 rounded font-mono text-sm"
+                    className="px-2 py-1 rounded-md font-mono text-[15px]"
                     style={{ 
-                      background: isXP ? '#E8E8E8' : '#E8E0D5',
+                      background: isXP ? '#F5F5F5' : '#F0EBE3',
                       color: secondaryColor,
                       border: isXP ? '1px solid #A0A0A0' : '1px solid #C0B8A8',
                       fontFamily: isXP ? "'Courier New', monospace" : 'monospace',
@@ -263,12 +316,12 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
                   </code>
                   , Boom, done.
                 </p>
-                <p>
+                <p className="os-body-text">
                   And if you need more than a single shot you are just an{" "}
                   <code 
-                    className="px-1 py-0.5 rounded font-mono text-sm"
+                    className="px-2 py-1 rounded-md font-mono text-[15px]"
                     style={{ 
-                      background: isXP ? '#E8E8E8' : '#E8E0D5',
+                      background: isXP ? '#F5F5F5' : '#F0EBE3',
                       color: secondaryColor,
                       border: isXP ? '1px solid #A0A0A0' : '1px solid #C0B8A8',
                       fontFamily: isXP ? "'Courier New', monospace" : 'monospace',
@@ -279,8 +332,27 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
                   {" "}away
                 </p>
                 
-                <RetroPanel title="Available Options" className="mt-4" >
-                  <ul className="text-sm space-y-2" style={{ color: isXP ? '#555555' : '#5A4A4A' }}>
+                <div 
+                  className="mt-6 p-4 rounded-lg"
+                  style={{
+                    background: isXP 
+                      ? 'linear-gradient(to bottom, #E8E8E8 0%, #D8D8D8 100%)' 
+                      : 'linear-gradient(to bottom, #E8E0D5 0%, #DDD5CA 100%)',
+                    border: isXP ? '1px solid #A0A0A0' : '1px solid #C0B8A8',
+                    borderTopColor: isXP ? '#F0F0F0' : '#E8E0D5',
+                    borderLeftColor: isXP ? '#F0F0F0' : '#E8E0D5',
+                    boxShadow: isXP 
+                      ? '0 1px 0 rgba(255,255,255,0.8) inset, 0 -1px 0 rgba(0,0,0,0.05) inset, 0 2px 4px rgba(0,0,0,0.1)' 
+                      : '0 1px 0 rgba(255,255,255,0.8) inset, 0 -1px 0 rgba(0,0,0,0.05) inset, 0 2px 4px rgba(0,0,0,0.1)',
+                  }}
+                >
+                  <h4 
+                    className="text-sm font-semibold mb-3 uppercase tracking-wide"
+                    style={{ color: isXP ? '#333333' : '#5A4A4A' }}
+                  >
+                    Available Options
+                  </h4>
+                  <ul className="space-y-2" style={{ color: isXP ? '#555555' : '#5A4A4A' }}>
                     <li>
                       <code style={{ color: secondaryColor, fontFamily: isXP ? "'Courier New', monospace" : 'monospace' }}>--model</code>: gpt-4, claude-3.5, deepseek, ...
                     </li>
@@ -291,17 +363,17 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
                       <code style={{ color: secondaryColor, fontFamily: isXP ? "'Courier New', monospace" : 'monospace' }}>--system</code>: custom system prompt
                     </li>
                   </ul>
-                </RetroPanel>
+                </div>
 
-                <h3 className="text-lg font-bold pt-4">
+                <h3 className="os-subheading pt-4">
                   Once you are a regular, create an agent!
                 </h3>
-                <p>
+                <p className="os-body-text">
                   Whatever the case, it is time for you to{" "}
                   <code 
-                    className="px-1 py-0.5 rounded font-mono text-sm"
+                    className="px-2 py-1 rounded-md font-mono text-[15px]"
                     style={{ 
-                      background: isXP ? '#E8E8E8' : '#E8E0D5',
+                      background: isXP ? '#F5F5F5' : '#F0EBE3',
                       color: secondaryColor,
                       border: isXP ? '1px solid #A0A0A0' : '1px solid #C0B8A8',
                       fontFamily: isXP ? "'Courier New', monospace" : 'monospace',
@@ -339,10 +411,13 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
           </div>
         </WindowFrame>
 
-        {/* Maurice Demo */}
-        <WindowFrame title="Meet Maurice - The Rude Parisian Waiter" className="lg:col-span-2" >
-          <div className="p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Maurice Demo - Compact, Tall */}
+        <WindowFrame 
+          title="Meet Maurice - The Rude Parisian Waiter" 
+          className="col-span-12 md:col-span-4 lg:col-span-4 window-min-h-xl cascade-in cascade-delay-7 offset-right z-layer-3"
+        >
+          <div className="window-content-spacious">
+            <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
               <div>
                 <Terminable
                   startLine=""
@@ -367,22 +442,41 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
                 />
               </div>
               <div className="space-y-4" style={{ color: bodyTextColor }}>
-                <h3 className="text-xl font-bold">Not just One prompt</h3>
-                <p>
+                <h3 className="os-subheading">Not just One prompt</h3>
+                <p className="os-body-text">
                   Sometimes, you can have a nice &ldquo;base prompt&rdquo; for your agent, 
                   but you might want to make it modular? Or add functionalities?
                 </p>
-                <p>
+                <p className="os-body-text">
                   For that, you can use the &ldquo;tasks&rdquo; section in the agent
                   configuration file.
                 </p>
                 
-                <RetroPanel title="Using Tasks" className="mt-4" >
-                  <p className="text-sm mb-2" style={{ color: isXP ? '#555555' : '#5A4A4A' }}>
+                <div 
+                  className="mt-4 p-4 rounded-lg"
+                  style={{
+                    background: isXP 
+                      ? 'linear-gradient(to bottom, #E8E8E8 0%, #D8D8D8 100%)' 
+                      : 'linear-gradient(to bottom, #E8E0D5 0%, #DDD5CA 100%)',
+                    border: isXP ? '1px solid #A0A0A0' : '1px solid #C0B8A8',
+                    borderTopColor: isXP ? '#F0F0F0' : '#E8E0D5',
+                    borderLeftColor: isXP ? '#F0F0F0' : '#E8E0D5',
+                    boxShadow: isXP 
+                      ? '0 1px 0 rgba(255,255,255,0.8) inset, 0 -1px 0 rgba(0,0,0,0.05) inset, 0 2px 4px rgba(0,0,0,0.1)' 
+                      : '0 1px 0 rgba(255,255,255,0.8) inset, 0 -1px 0 rgba(0,0,0,0.05) inset, 0 2px 4px rgba(0,0,0,0.1)',
+                  }}
+                >
+                  <h4 
+                    className="text-sm font-semibold mb-2 uppercase tracking-wide"
+                    style={{ color: isXP ? '#333333' : '#5A4A4A' }}
+                  >
+                    Using Tasks
+                  </h4>
+                  <p className="text-sm mb-3 os-body-text" style={{ color: isXP ? '#555555' : '#5A4A4A' }}>
                     Invoke a task with:
                   </p>
                   <code 
-                    className="block p-2 rounded font-mono text-sm"
+                    className="block p-2 rounded-md font-mono text-[13px]"
                     style={{ 
                       background: isXP ? '#000000' : '#1C1C1C',
                       color: isXP ? '#C0C0C0' : '#4E9A06',
@@ -392,9 +486,9 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
                   >
                     ai agent ask Maurice &quot;#/task task-name;your prompt&quot;
                   </code>
-                </RetroPanel>
+                </div>
                 
-                <p className="text-sm" style={{ color: isXP ? '#666666' : '#6A5A5A' }}>
+                <p className="text-sm os-body-text" style={{ color: isXP ? '#666666' : '#6A5A5A' }}>
                   You can also use bash commands in your prompts with{" "}
                   <code style={{ color: secondaryColor, fontFamily: isXP ? "'Courier New', monospace" : 'monospace' }}>#!/command;</code> syntax!
                 </p>
@@ -403,15 +497,18 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
           </div>
         </WindowFrame>
 
-        {/* What For Section */}
-        <WindowFrame title="What for?" className="lg:col-span-2" >
-          <div className="p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-4" style={{ color: bodyTextColor }}>
-                <h3 className="text-2xl font-bold text-center pb-4">
+        {/* What For - Full Width */}
+        <WindowFrame 
+          title="What for?" 
+          className="col-span-12 window-min-h cascade-in cascade-delay-8 z-layer-1"
+        >
+          <div className="window-content-spacious">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-5" style={{ color: bodyTextColor }}>
+                <h3 className="os-heading text-center pb-4">
                   What for ... ?
                 </h3>
-                <p>
+                <p className="os-body-text">
                   You might say I already have{" "}
                   <Link 
                     href="https://openwebui.com/" 
@@ -430,9 +527,9 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
                   </Link>{" "}
                   and that&apos;s true, but can these add{" "}
                   <code 
-                    className="px-1 py-0.5 rounded font-mono text-sm"
+                    className="px-2 py-1 rounded-md font-mono text-[15px]"
                     style={{ 
-                      background: isXP ? '#E8E8E8' : '#E8E0D5',
+                      background: isXP ? '#F5F5F5' : '#F0EBE3',
                       color: secondaryColor,
                       border: isXP ? '1px solid #A0A0A0' : '1px solid #C0B8A8',
                       fontFamily: isXP ? "'Courier New', monospace" : 'monospace',
@@ -443,41 +540,60 @@ export default function HomePageClient({ agentConfig }: HomePageClientProps) {
                   {" "}to your{" "}
                   <span style={{ color: accentColor, fontWeight: 'bold' }}>CLI</span>??
                 </p>
-                <p>
+                <p className="os-body-text">
                   <strong>I think NOT!</strong>
                 </p>
-                <p>
+                <p className="os-body-text">
                   Just like UI vs{" "}
                   <span style={{ color: accentColor, fontWeight: 'bold' }}>CLI</span>{" "}
                   usage for any task, you are way more efficient, especially with completion!
                 </p>
                 
-                <RetroPanel title="Related Projects" className="mt-6" >
-                  <div className="space-y-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span style={{ color: isXP ? '#555555' : '#5A4A4A' }}>ButT3r:</span>
+                <div 
+                  className="mt-8 p-4 rounded-lg"
+                  style={{
+                    background: isXP 
+                      ? 'linear-gradient(to bottom, #E8E8E8 0%, #D8D8D8 100%)' 
+                      : 'linear-gradient(to bottom, #E8E0D5 0%, #DDD5CA 100%)',
+                    border: isXP ? '1px solid #A0A0A0' : '1px solid #C0B8A8',
+                    borderTopColor: isXP ? '#F0F0F0' : '#E8E0D5',
+                    borderLeftColor: isXP ? '#F0F0F0' : '#E8E0D5',
+                    boxShadow: isXP 
+                      ? '0 1px 0 rgba(255,255,255,0.8) inset, 0 -1px 0 rgba(0,0,0,0.05) inset, 0 2px 4px rgba(0,0,0,0.1)' 
+                      : '0 1px 0 rgba(255,255,255,0.8) inset, 0 -1px 0 rgba(0,0,0,0.05) inset, 0 2px 4px rgba(0,0,0,0.1)',
+                  }}
+                >
+                  <h4 
+                    className="text-sm font-semibold mb-3 uppercase tracking-wide"
+                    style={{ color: isXP ? '#333333' : '#5A4A4A' }}
+                  >
+                    Related Projects
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-2">
+                      <span style={{ color: isXP ? '#555555' : '#5A4A4A', fontWeight: '600' }}>ButT3r:</span>
                       <Link 
                         href="https://Butt3r.dev" 
                         target="_blank"
                         style={{ color: secondaryColor }}
-                        className="underline"
+                        className="underline hover:opacity-80"
                       >
                         create-t3-app wrapper with --ai flag
                       </Link>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span style={{ color: isXP ? '#555555' : '#5A4A4A' }}>parseArger:</span>
+                    <div className="flex items-start gap-2">
+                      <span style={{ color: isXP ? '#555555' : '#5A4A4A', fontWeight: '600' }}>parseArger:</span>
                       <Link 
                         href="https://github.com/DimitriGilbert/parseArger" 
                         target="_blank"
                         style={{ color: secondaryColor }}
-                        className="underline"
+                        className="underline hover:opacity-80"
                       >
                         Bash argument parser
                       </Link>
                     </div>
                   </div>
-                </RetroPanel>
+                </div>
               </div>
               
               <div>
@@ -521,8 +637,8 @@ ai ask --model "\${_arg_model}" --provider "\${_arg_provider}" <<< "$prompt"
       </div>
 
       {/* Footer */}
-      <div className="mt-12 text-center" style={{ color: isXP ? '#333333' : '#F5F1E8' }}>
-        <p className="text-sm opacity-80">
+      <div className="mt-16 text-center" style={{ color: isXP ? '#333333' : '#F5F1E8' }}>
+        <p className="text-base opacity-80">
           AI-Gents — A CLI tool for AI agents
         </p>
       </div>

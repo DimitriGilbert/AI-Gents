@@ -4,6 +4,7 @@ import { useTheme } from "next-themes";
 import { ThemeToggle } from "~/components/theme-toggle";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Toaster } from "sonner";
 
 function UbuntuNav() {
   return (
@@ -109,6 +110,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     <>
       {isXP ? <XPNav /> : <UbuntuNav />}
       <div className="pt-16 min-h-screen">{children}</div>
+      <Toaster />
     </>
   );
 }

@@ -2,6 +2,12 @@
 
 A sophisticated bash-based AI chat interface supporting multiple LLM providers with agents, streaming, and parallel processing.
 
+## ⚠️ CRITICAL: DO NOT RUN DEV SERVER
+
+**NEVER run `bun run dev`, `npm run dev`, or any dev server commands.**
+The dev server is manually managed by the user. DO NOT touch it.
+**This rule is absolute.**
+
 ## Project Structure
 
 This repository contains two main components:
